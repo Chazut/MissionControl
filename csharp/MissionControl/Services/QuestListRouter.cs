@@ -27,6 +27,14 @@ public sealed class QuestListRouter(
     )
 ])
 {
+    /// <summary>
+    /// Quests that are broken and should never be selected.
+    /// </summary>
+    private static readonly HashSet<string> QuestBlacklist =
+    [
+        "67a09761e720611a6a01f288" // Keeper's Word
+    ];
+
     private static class QuestStatus
     {
         public const int AvailableForStart = 1;
@@ -69,32 +77,6 @@ public sealed class QuestListRouter(
         }
         catch { }
         return unlocked;
-    }
-
-    /// <summary>
-    /// Checks if the client would actually display this quest.
-    /// SPT runs in PvE mode — quests with acceptanceAndFinishingSource="eft"
-    /// or an empty gameModes array are hidden client-side.
-    /// </summary>
-    private static bool IsClientVisible(JsonElement quest)
-    {
-        // acceptanceAndFinishingSource: if set to "eft", client hides it in PvE mode
-        if (quest.TryGetProperty("acceptanceAndFinishingSource", out var source))
-        {
-            var val = source.GetString();
-            if (val != null && val.Equals("eft", StringComparison.OrdinalIgnoreCase))
-                return false;
-        }
-
-        // gameModes: if present and empty, quest is not available in any mode
-        if (quest.TryGetProperty("gameModes", out var modes) &&
-            modes.ValueKind == JsonValueKind.Array &&
-            modes.GetArrayLength() == 0)
-        {
-            return false;
-        }
-
-        return true;
     }
 
     /// <summary>
@@ -153,10 +135,8 @@ public sealed class QuestListRouter(
 
                 if (id == null || status < 0) continue;
 
-                // Skip quests not compatible with SPT's PvE mode:
-                // - acceptanceAndFinishingSource must be missing/null or not "eft"
-                // - gameModes must be missing or contain "pve"
-                if (!IsClientVisible(quest)) continue;
+                // Skip quests known to be broken in SPT PvE mode
+                if (QuestBlacklist.Contains(id)) continue;
 
                 var exempt = IsExemptFromFilter(id, traderId, config, configService.ResolvedTraderWhitelist);
                 allQuests.Add((id, status, traderId, exempt));

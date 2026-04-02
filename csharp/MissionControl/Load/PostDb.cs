@@ -25,8 +25,6 @@ public sealed class PostDb : IOnLoad
 
     public Task OnLoad()
     {
-        _configService.Load();
-
         // Load vanilla quest IDs from disk
         var asmDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
         var sptRoot = Path.GetFullPath(Path.Combine(asmDir, "..", "..", ".."));
@@ -34,7 +32,7 @@ public sealed class PostDb : IOnLoad
         VanillaQuestSnapshot.LoadFromFile(questsPath);
         _logger.Info($"[MissionControl] Loaded {VanillaQuestSnapshot.Ids.Count} vanilla quest IDs");
 
-        // Resolve trader whitelist names → IDs (only meaningful when filtering modded quests)
+        // Resolve trader whitelist names → IDs
         if (_configService.Config.filter_modded_quests)
             ResolveTraderWhitelist();
 
@@ -61,7 +59,6 @@ public sealed class PostDb : IOnLoad
         var traders = _db.GetTables()?.Traders;
         if (traders == null) return;
 
-        // Build name → ID lookup (case-insensitive)
         var nameToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (id, trader) in traders)
         {

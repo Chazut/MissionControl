@@ -21,6 +21,12 @@ public sealed class ModConfig
     public List<string> trader_whitelist { get; set; } = [];
 
     /// <summary>
+    /// Cost in roubles to reroll quest slots (buy the reroll item at Prapor).
+    /// </summary>
+    public int reroll_cost { get; set; } = 50000;
+
+
+    /// <summary>
     /// Enable verbose logging for debugging.
     /// </summary>
     public bool debug { get; set; } = false;

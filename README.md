@@ -13,6 +13,7 @@ With many mods installed, the quest list becomes unmanageable. You don't know wh
 - When you **complete** a quest, a new random one takes its slot immediately
 - **Failed quests** stay in their slot — you can restart them from the UI
 - Selections are **persisted** per profile across server restarts
+- **Reroll** your quest slots at any time via in-game chat (costs roubles)
 
 ### Example
 
@@ -22,6 +23,16 @@ With `max_slots: 3`:
 - 3+ quests in progress → no new quests shown until you complete some
 
 If installed on an existing profile with many active quests, no new quests will be proposed until you drop below the limit.
+
+## Reroll
+
+Open the in-game messenger, find **"Mission Control"**, and type:
+
+```
+mc reroll
+```
+
+This clears all your current quest slots (including accepted but unfinished quests) and picks new random ones. Costs roubles (configurable, default 50,000₽).
 
 ## Installation
 
@@ -62,6 +73,10 @@ Edit `config/config.jsonc`:
   // If a name is not found, available traders will be listed in the server log.
   "trader_whitelist": ["Kolya", "Guiding Light"],
 
+  // Cost in roubles to reroll quest slots via "mc reroll" chat command.
+  // Set to 0 for free rerolls.
+  "reroll_cost": 50000,
+
   // Enable verbose logging for debugging.
   "debug": false,
 
@@ -77,6 +92,7 @@ Edit `config/config.jsonc`:
 | `max_slots` | `3` | Total quest slots (in-progress + available) |
 | `filter_modded_quests` | `false` | If `false`, modded quests are always visible and don't consume slots |
 | `trader_whitelist` | `[]` | Trader names (case-insensitive) whose quests bypass the filter |
+| `reroll_cost` | `50000` | Rouble cost for `mc reroll` chat command (0 = free) |
 | `debug` | `false` | Verbose server logging |
 | `debug_refresh` | `false` | Clear saved selections on server start |
 

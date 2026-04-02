@@ -1,11 +1,14 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading.Tasks;
 using BepInEx;
 using BepInEx.Logging;
+using Comfort.Common;
+using EFT;
 using EFT.Quests;
 using HarmonyLib;
+using UnityEngine;
 
 namespace MissionControl.Client
 {
@@ -13,83 +16,108 @@ namespace MissionControl.Client
     public class Plugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log;
+        internal static Plugin Instance;
 
         private void Awake()
         {
+            Instance = this;
             Log = Logger;
             new Harmony("com.chazut.missioncontrol.client").PatchAll();
-            Logger.LogInfo("MissionControl.Client loaded — quest list will refresh after completion.");
+            Logger.LogInfo("MissionControl.Client loaded");
+        }
+    }
+
+    public static class QuestRefresh
+    {
+        public static LocalQuestControllerClass FindController()
+        {
+            try
+            {
+                var app = Singleton<ClientApplication<ISession>>.Instance;
+                if (app == null) return null;
+
+                foreach (var field in app.GetType().GetFields(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+                {
+                    var val = field.GetValue(app);
+                    if (val == null) continue;
+
+                    var qcField = val.GetType().GetField("LocalQuestControllerClass",
+                        BindingFlags.Public | BindingFlags.Instance);
+                    if (qcField?.GetValue(val) is LocalQuestControllerClass qc)
+                        return qc;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        public static void ApplyTemplates(LocalQuestControllerClass controller, List<RawQuestClass> templates)
+        {
+            var questBook = controller.Quests;
+            if (questBook == null) return;
+
+            var newIds = new HashSet<string>();
+            foreach (var t in templates)
+            {
+                if (t.Id != null)
+                    newIds.Add(t.Id.ToString());
+            }
+
+            var toRemove = new List<QuestClass>();
+            foreach (var quest in questBook)
+            {
+                if (quest.QuestStatus == EQuestStatus.AvailableForStart &&
+                    !newIds.Contains(quest.Id.ToString()))
+                {
+                    toRemove.Add(quest);
+                }
+            }
+            foreach (var quest in toRemove)
+                questBook.RemoveQuestTemplate(quest.Template);
+
+            questBook.AddTemplates(templates);
+
+            var eventField = typeof(AbstractQuestControllerClass)
+                .GetField("Action_0", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (eventField?.GetValue(controller) is Action onStatusChanged)
+                onStatusChanged.Invoke();
+
+            Plugin.Log.LogInfo($"[MissionControl] Refreshed ({templates.Count} templates, removed {toRemove.Count})");
         }
     }
 
     /// <summary>
-    /// After a quest is completed successfully, re-request the quest list from the server
-    /// and update the quest book. This ensures MissionControl's filtered list (with the
-    /// new random replacement quest) is applied immediately.
+    /// After quest completion, refresh quest list via coroutine (correct Unity thread context).
     /// </summary>
-    [HarmonyPatch(typeof(LocalQuestControllerClass), nameof(LocalQuestControllerClass.FinishQuest))]
-    public static class FinishQuest_RefreshQuestList_Patch
+    [HarmonyPatch(typeof(LocalQuestControllerClass), nameof(LocalQuestControllerClass.SetConditionalStatus))]
+    public static class SetConditionalStatus_Patch
     {
-        public static void Postfix(LocalQuestControllerClass __instance, Task __result)
+        public static void Postfix(LocalQuestControllerClass __instance, QuestClass quest, EQuestStatus status)
         {
-            // Wait for the completion task to finish, then refresh
-            RefreshAfterCompletion(__instance, __result).ContinueWith(t =>
+            if (status == EQuestStatus.Success)
             {
-                if (t.Exception != null)
-                    Plugin.Log.LogError($"[MissionControl] Quest refresh failed: {t.Exception.InnerException?.Message}");
-            });
+                Plugin.Instance?.StartCoroutine(RefreshAfterCompletion(__instance));
+            }
         }
 
-        private static async Task RefreshAfterCompletion(LocalQuestControllerClass controller, Task completionTask)
+        private static IEnumerator RefreshAfterCompletion(LocalQuestControllerClass controller)
         {
-            // Wait for the original FinishQuest to complete
-            await completionTask;
-
-            // Small delay to let the server process the completion and update slots
-            await Task.Delay(500);
+            yield return new WaitForSeconds(0.5f);
 
             var questActions = controller.IQuestActions;
-            if (questActions == null)
-            {
-                Plugin.Log.LogWarning("[MissionControl] IQuestActions is null, cannot refresh quest list");
-                return;
-            }
+            if (questActions == null) yield break;
 
-            // Re-request the quest list from server (which now has the updated slots)
-            var templates = await questActions.RequestQuestsTemplates(true);
-            if (templates == null || templates.Count == 0)
-            {
-                Plugin.Log.LogWarning("[MissionControl] Received empty quest list from server");
-                return;
-            }
+            var task = questActions.RequestQuestsTemplates(true);
+            while (!task.IsCompleted)
+                yield return null;
 
-            // Find the QuestBook via reflection on the base class (GClass4005)
-            // The Quests property gives us the quest book
-            var questsProperty = controller.GetType().BaseType?
-                .GetProperty("Quests", BindingFlags.Public | BindingFlags.Instance);
+            if (task.IsFaulted) yield break;
 
-            if (questsProperty?.GetValue(controller) is QuestBookClass questBook)
-            {
-                questBook.AddTemplates(templates);
+            var templates = task.Result;
+            if (templates == null || templates.Count == 0) yield break;
 
-                // Trigger OnConditionalStatusChanged to refresh trader badge icons
-                // The event is stored as Action_0 in the base class GClass3999<QuestClass>
-                var eventField = typeof(AbstractQuestControllerClass)
-                    .GetField("Action_0", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (eventField?.GetValue(controller) is Action onStatusChanged)
-                {
-                    onStatusChanged.Invoke();
-                    Plugin.Log.LogInfo($"[MissionControl] Quest list refreshed ({templates.Count} templates), trader badges updated");
-                }
-                else
-                {
-                    Plugin.Log.LogInfo($"[MissionControl] Quest list refreshed ({templates.Count} templates)");
-                }
-            }
-            else
-            {
-                Plugin.Log.LogWarning("[MissionControl] Could not find QuestBook to refresh");
-            }
+            QuestRefresh.ApplyTemplates(controller, templates);
         }
     }
 }
