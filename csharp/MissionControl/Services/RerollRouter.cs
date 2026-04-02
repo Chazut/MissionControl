@@ -5,6 +5,7 @@ using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Helpers;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.ItemEvent;
+using SPTarkov.Server.Core.Models.Enums;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Utils;
 
@@ -88,14 +89,29 @@ public sealed class RerollRouter(
                     inventoryHelper.RemoveItem(pmcData, new MongoId(rerollId), sessionId, null);
             }
 
-            // Clear quest slot selections
+            // Reroll: clear selections and mark current in-progress quests as exempt
             var sessionIdStr = sessionId.ToString();
             var state = storage.Load(sessionIdStr);
             var previousCount = state.SelectedQuestIds.Count;
             state.SelectedQuestIds.Clear();
+
+            // Find all in-progress quests from the player's profile and mark them exempt
+            // These quests won't consume slots, giving the player breathing room
+            state.ExemptQuestIds.Clear();
+            if (pmcData?.Quests != null)
+            {
+                foreach (var quest in pmcData.Quests)
+                {
+                    if (quest.Status is QuestStatusEnum.Started or QuestStatusEnum.AvailableForFinish or QuestStatusEnum.FailRestartable)
+                    {
+                        state.ExemptQuestIds.Add(quest.QId.ToString());
+                    }
+                }
+            }
+
             storage.Save(sessionIdStr, state);
 
-            logger.Info($"[MissionControl] Reroll purchased — cleared {previousCount} quest slots");
+            logger.Info($"[MissionControl] Reroll purchased — cleared {previousCount} slots, exempted {state.ExemptQuestIds.Count} in-progress quests");
 
             return ValueTask.FromResult(output ?? string.Empty);
         }

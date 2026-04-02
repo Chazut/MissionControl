@@ -6,15 +6,15 @@ namespace MissionControl.Services;
 /// <summary>
 /// Core logic for managing quest slots per profile.
 /// Determines which quests should be visible based on the max_slots limit.
+///
+/// Exempt quests (set by reroll) are in-progress quests that don't consume slots,
+/// allowing the player to have more active quests than max_slots temporarily.
 /// </summary>
 [Injectable]
 public sealed class SlotManager
 {
     private static readonly Random Rng = new();
 
-    /// <summary>
-    /// EQuestStatus values from the SPT/EFT quest system.
-    /// </summary>
     private static class QuestStatus
     {
         public const int AvailableForStart = 1;
@@ -23,15 +23,6 @@ public sealed class SlotManager
         public const int FailRestartable = 6;
     }
 
-    /// <summary>
-    /// Given the full quest list and the persisted profile state,
-    /// returns the set of quest IDs that should remain visible.
-    /// Also updates the profile state with current selections.
-    /// </summary>
-    /// <param name="quests">All quests with their id and status from the server response.</param>
-    /// <param name="state">Persisted profile state (will be mutated with new selections).</param>
-    /// <param name="maxSlots">Maximum total visible quests.</param>
-    /// <returns>Set of quest IDs to keep in the response.</returns>
     public HashSet<string> GetVisibleQuestIds(
         List<(string id, int status)> quests,
         ProfileState state,
@@ -39,29 +30,40 @@ public sealed class SlotManager
     {
         var visible = new HashSet<string>();
 
-        // 1. Always show in-progress quests (Started, AvailableForFinish)
-        //    and failed-restartable quests (they stay in their slot)
-        var inProgressIds = new List<string>();
+        // 1. Clean up exempt list: remove quests no longer in-progress (completed/failed)
+        var inProgressSet = new HashSet<string>();
         foreach (var (id, status) in quests)
         {
             if (status is QuestStatus.Started or QuestStatus.AvailableForFinish or QuestStatus.FailRestartable)
-            {
+                inProgressSet.Add(id);
+        }
+        state.ExemptQuestIds.RemoveAll(id => !inProgressSet.Contains(id));
+
+        // 2. Always show all in-progress quests (exempt or not)
+        foreach (var (id, status) in quests)
+        {
+            if (status is QuestStatus.Started or QuestStatus.AvailableForFinish or QuestStatus.FailRestartable)
                 visible.Add(id);
-                inProgressIds.Add(id);
-            }
         }
 
-        int inProgressCount = inProgressIds.Count;
-        int remainingSlots = Math.Max(0, maxSlots - inProgressCount);
+        // 3. Count in-progress quests that are NOT exempt — only these consume slots
+        int nonExemptInProgress = 0;
+        foreach (var id in inProgressSet)
+        {
+            if (!state.ExemptQuestIds.Contains(id))
+                nonExemptInProgress++;
+        }
 
-        // 2. If no remaining slots, clear selections and return only in-progress
+        int remainingSlots = Math.Max(0, maxSlots - nonExemptInProgress);
+
+        // 4. If no remaining slots, clear selections
         if (remainingSlots <= 0)
         {
             state.SelectedQuestIds.Clear();
             return visible;
         }
 
-        // 3. Get all quests that are AvailableForStart
+        // 5. Get all quests that are AvailableForStart
         var availableIds = new HashSet<string>();
         foreach (var (id, status) in quests)
         {
@@ -69,10 +71,10 @@ public sealed class SlotManager
                 availableIds.Add(id);
         }
 
-        // 4. Clean up persisted selections: remove any that are no longer AvailableForStart
+        // 6. Clean up selections: remove any no longer AvailableForStart
         state.SelectedQuestIds.RemoveAll(id => !availableIds.Contains(id));
 
-        // 5. If we need more selections, pick randomly from unselected available quests
+        // 7. Fill remaining slots with random picks
         if (state.SelectedQuestIds.Count < remainingSlots)
         {
             var unselected = availableIds
@@ -85,17 +87,13 @@ public sealed class SlotManager
             state.SelectedQuestIds.AddRange(unselected.Take(needed));
         }
 
-        // 6. If we have too many selections (e.g., maxSlots was reduced), trim
+        // 8. Trim if too many
         if (state.SelectedQuestIds.Count > remainingSlots)
-        {
             state.SelectedQuestIds = state.SelectedQuestIds.Take(remainingSlots).ToList();
-        }
 
-        // 7. Add selected quests to visible set
+        // 9. Add selected quests to visible set
         foreach (var id in state.SelectedQuestIds)
-        {
             visible.Add(id);
-        }
 
         return visible;
     }

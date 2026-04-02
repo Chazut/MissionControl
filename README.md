@@ -13,7 +13,6 @@ With many mods installed, the quest list becomes unmanageable. You don't know wh
 - When you **complete** a quest, a new random one takes its slot immediately
 - **Failed quests** stay in their slot — you can restart them from the UI
 - Selections are **persisted** per profile across server restarts
-- **Reroll** your quest slots at any time via in-game chat (costs roubles)
 
 ### Example
 
@@ -26,13 +25,13 @@ If installed on an existing profile with many active quests, no new quests will 
 
 ## Reroll
 
-Open the in-game messenger, find **"Mission Control"**, and type:
+Buy the **"Mission Reroll"** item at **Prapor** (LL1). When purchased:
 
-```
-mc reroll
-```
+1. All your currently in-progress quests become **exempt** — they stay visible but no longer consume slots
+2. **3 new random quests** are assigned to your slots
+3. The profile reloads automatically
 
-This clears all your current quest slots (including accepted but unfinished quests) and picks new random ones. Costs roubles (configurable, default 50,000₽).
+This lets you break out of difficult quests without losing progress. Your stuck quests remain active alongside the new ones until you complete them.
 
 ## Installation
 
@@ -53,7 +52,7 @@ Copy `MissionControl.Client.dll` to:
 BepInEx/plugins/MissionControl.Client.dll
 ```
 
-This BepInEx plugin ensures the quest list and trader badges refresh immediately after completing a quest.
+This BepInEx plugin handles quest list refresh after completing a quest and after purchasing a reroll.
 
 ## Configuration
 
@@ -70,11 +69,9 @@ Edit `config/config.jsonc`:
 
   // Trader names whose quests bypass the slot filter entirely (always visible).
   // Case-insensitive. Works with both vanilla and modded traders.
-  // If a name is not found, available traders will be listed in the server log.
   "trader_whitelist": ["Kolya", "Guiding Light"],
 
-  // Cost in roubles to reroll quest slots via "mc reroll" chat command.
-  // Set to 0 for free rerolls.
+  // Cost in roubles for the reroll item at Prapor.
   "reroll_cost": 50000,
 
   // Enable verbose logging for debugging.
@@ -91,8 +88,8 @@ Edit `config/config.jsonc`:
 |---|---|---|
 | `max_slots` | `3` | Total quest slots (in-progress + available) |
 | `filter_modded_quests` | `false` | If `false`, modded quests are always visible and don't consume slots |
-| `trader_whitelist` | `[]` | Trader names (case-insensitive) whose quests bypass the filter |
-| `reroll_cost` | `50000` | Rouble cost for `mc reroll` chat command (0 = free) |
+| `trader_whitelist` | `["Kolya", "Guiding Light"]` | Trader names (case-insensitive) whose quests bypass the filter |
+| `reroll_cost` | `50000` | Rouble cost for the Mission Reroll item at Prapor |
 | `debug` | `false` | Verbose server logging |
 | `debug_refresh` | `false` | Clear saved selections on server start |
 
