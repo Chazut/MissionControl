@@ -1,0 +1,24 @@
+{
+  // Maximum number of quests visible at once.
+  // This includes both in-progress quests (Started, AvailableForFinish)
+  // and randomly selected available quests.
+  // If you already have this many quests in progress, no new quests will be shown.
+  "max_slots": 3,
+
+  // When true, modded quests are subject to the slot limit like vanilla quests.
+  // When false, modded quests bypass the filter entirely (always visible).
+  "filter_modded_quests": false,
+
+  // Trader names whose quests bypass the slot filter entirely (always visible).
+  // Case-insensitive. Works with both vanilla and modded traders.
+  // Example: ["Therapist", "Kolya"] to whitelist Therapist and the TTC trader.
+  // If a name is not found, available traders will be listed in the server log.
+  "trader_whitelist": ["Kolya", "Guiding Light"],
+
+  // Enable verbose logging for debugging.
+  "debug": false,
+
+  // When true, clears all saved slot selections on server start.
+  // Forces a fresh random pick each launch. Only useful during development.
+  "debug_refresh": false
+}
