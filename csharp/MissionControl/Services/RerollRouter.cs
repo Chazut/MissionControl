@@ -6,8 +6,6 @@ using SPTarkov.Server.Core.Helpers;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.ItemEvent;
 using SPTarkov.Server.Core.Models.Utils;
-using SPTarkov.Server.Core.Servers.Ws;
-using SPTarkov.Server.Core.Models.Eft.Ws;
 using SPTarkov.Server.Core.Utils;
 
 namespace MissionControl.Services;
@@ -23,14 +21,13 @@ public sealed class RerollRouter(
     ProfileStateStorage storage,
     ProfileHelper profileHelper,
     InventoryHelper inventoryHelper,
-    SptWebSocketConnectionHandler wsHandler,
     ConfigService configService,
     ISptLogger<RerollRouter> logger
 ) : StaticRouter(jsonUtil, [
     new RouteAction<ItemEventRouterRequest>(
         "/client/game/profile/items/moving",
         (url, requestData, sessionId, output) =>
-            ProcessPurchase(sessionId, output, requestData, storage, profileHelper, inventoryHelper, wsHandler, configService, logger)
+            ProcessPurchase(sessionId, output, requestData, storage, profileHelper, inventoryHelper, configService, logger)
     )
 ])
 {
@@ -41,7 +38,6 @@ public sealed class RerollRouter(
         ProfileStateStorage storage,
         ProfileHelper profileHelper,
         InventoryHelper inventoryHelper,
-        SptWebSocketConnectionHandler wsHandler,
         ConfigService configService,
         ISptLogger<RerollRouter> logger)
     {
@@ -82,48 +78,14 @@ public sealed class RerollRouter(
             if (rerollItemIds.Count == 0)
                 return ValueTask.FromResult(output ?? string.Empty);
 
-            // Modify the response:
-            // 1. Remove reroll items from "new"
-            // 2. Add them to "del" so the client knows to remove them
-            var node = JsonNode.Parse(output);
-            var pcNode = node?["data"]?["profileChanges"]?.AsObject()
-                ?? node?["profileChanges"]?.AsObject();
-
+            // Remove from server inventory only — leave in response so client receives it.
+            // The client polling will detect the item and trigger a profile reload,
+            // which will make the item disappear (already removed server-side).
             var pmcData = profileHelper.GetPmcProfile(sessionId);
-
             foreach (var rerollId in rerollItemIds)
             {
-                // Remove from server inventory
                 if (pmcData != null)
                     inventoryHelper.RemoveItem(pmcData, new MongoId(rerollId), sessionId, null);
-
-                if (pcNode == null) continue;
-
-                foreach (var prop in pcNode)
-                {
-                    var itemsNode = prop.Value?["items"];
-                    if (itemsNode == null) continue;
-
-                    // Remove from "new"
-                    var newArr = itemsNode["new"]?.AsArray();
-                    if (newArr != null)
-                    {
-                        for (int i = newArr.Count - 1; i >= 0; i--)
-                        {
-                            if (newArr[i]?["_id"]?.GetValue<string>() == rerollId)
-                                newArr.RemoveAt(i);
-                        }
-                    }
-
-                    // Add to "del" — tells the client to delete this item
-                    var delArr = itemsNode["del"]?.AsArray();
-                    if (delArr == null)
-                    {
-                        delArr = new JsonArray();
-                        itemsNode.AsObject()["del"] = delArr;
-                    }
-                    delArr.Add(new JsonObject { ["_id"] = rerollId, ["_tpl"] = RerollService.RerollItemId });
-                }
             }
 
             // Clear quest slot selections
@@ -133,21 +95,9 @@ public sealed class RerollRouter(
             state.SelectedQuestIds.Clear();
             storage.Save(sessionIdStr, state);
 
-            logger.Info($"[MissionControl] Reroll purchased — cleared {previousCount} quest slots, forcing re-login");
+            logger.Info($"[MissionControl] Reroll purchased — cleared {previousCount} quest slots");
 
-            // Force client to re-login so it re-requests the quest list with new slots
-            Task.Run(async () =>
-            {
-                await Task.Delay(1500); // let the purchase response reach the client first
-                wsHandler.SendMessage(sessionId, new WsNotificationEvent
-                {
-                    EventType = NotificationEventType.ForceLogout,
-                    EventIdentifier = new MongoId(Guid.NewGuid().ToString("N")[..24])
-                });
-                logger.Info("[MissionControl] ForceLogout sent");
-            });
-
-            return ValueTask.FromResult(node?.ToJsonString(new JsonSerializerOptions { WriteIndented = false }) ?? output);
+            return ValueTask.FromResult(output ?? string.Empty);
         }
         catch (Exception ex)
         {
