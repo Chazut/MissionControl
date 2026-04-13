@@ -32,7 +32,18 @@ public sealed class QuestListRouter(
     /// </summary>
     private static readonly HashSet<string> QuestBlacklist =
     [
-        "67a09761e720611a6a01f288" // Keeper's Word
+        "67a09761e720611a6a01f288" // Keeper's Word — broken in SPT PvE
+    ];
+
+    /// <summary>
+    /// Quests that should always be visible (bypass slot filter).
+    /// These are critical progression quests that unlock traders/content.
+    /// </summary>
+    private static readonly HashSet<string> QuestWhitelist =
+    [
+        "657315e4a6af4ab4b50f3459", // Saving the Mole (Mechanic) — prerequisite chain to unlock Jaeger
+        "5ac23c6186f7741247042bad", // Gunsmith Part 1 (Mechanic) — prerequisite chain to unlock Jaeger
+        "5d2495a886f77425cd51e403"  // Introduction (Mechanic) — unlocks Jaeger
     ];
 
     private static class QuestStatus
@@ -87,6 +98,10 @@ public sealed class QuestListRouter(
     /// </summary>
     private static bool IsExemptFromFilter(string questId, string? traderId, ModConfig config, HashSet<string> resolvedTraderWhitelist)
     {
+        // Critical progression quest → always visible
+        if (QuestWhitelist.Contains(questId))
+            return true;
+
         // Whitelisted trader → always visible
         if (traderId != null && resolvedTraderWhitelist.Contains(traderId))
             return true;

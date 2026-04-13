@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace MissionControl.Client
 {
-    [BepInPlugin("com.chazut.missioncontrol.client", "MissionControl Client", "1.0.0")]
+    [BepInPlugin("com.chazut.missioncontrol.client", "MissionControl Client", "1.0.1")]
     public class Plugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log;
