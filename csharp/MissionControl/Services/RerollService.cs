@@ -2,9 +2,9 @@ using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Spt.Mod;
-using SPTarkov.Server.Core.Models.Utils;
-using SPTarkov.Server.Core.Services;
-using SPTarkov.Server.Core.Services.Mod;
+using SPTarkov.Common.Models.Logging;
+using SPTarkov.Server.Core.Models.Spt.Tables;
+using SPTarkov.Server.Core.Services.Modding.Custom;
 
 namespace MissionControl.Services;
 
@@ -23,13 +23,13 @@ public sealed class RerollService
     private const string PraporId = "54cb50c76803fa8b248b4571";
     private const string RoublesTpl = "5449016a4bdc2d6f028b456f";
 
-    private readonly DatabaseService _db;
+    private readonly TradersTable _traders;
     private readonly CustomItemService _customItemService;
     private readonly ISptLogger<RerollService> _logger;
 
-    public RerollService(DatabaseService db, CustomItemService customItemService, ISptLogger<RerollService> logger)
+    public RerollService(TradersTable traders, CustomItemService customItemService, ISptLogger<RerollService> logger)
     {
-        _db = db;
+        _traders = traders;
         _customItemService = customItemService;
         _logger = logger;
     }
@@ -37,14 +37,20 @@ public sealed class RerollService
     public bool CreateRerollItem()
     {
         // Exact same pattern as TTC CardItemFactory
+        // 4.1: NewItemName is required; AddToFleaPriceDb must be false when no
+        // flea price is provided (throws otherwise) and also blacklists the
+        // item from PMC loot as a side effect, which is what we want here.
         var details = new NewItemFromCloneDetails
         {
             NewId = RerollItemId,
             ItemTplToClone = CloneFrom,
             ParentId = ParentClass,
-            HandbookParentId = new MongoId(HandbookCategory),
+            NewItemName = "item_missioncontrol_reroll",
+            HandbookParentId = HandbookCategory,
             HandbookPriceRoubles = 50000,
             FleaPriceRoubles = null,
+            AddToFleaPriceDb = false,
+            AddToWeaponShelf = false,
             Locales = new Dictionary<string, LocaleDetails>
             {
                 ["en"] = new LocaleDetails
@@ -73,7 +79,7 @@ public sealed class RerollService
         catch { }
 
         var result = _customItemService.CreateItemFromClone(details);
-        if (result.Success != true)
+        if (!result.Success)
         {
             _logger.Warning($"[MissionControl] Failed to create reroll item: {string.Join(", ", result.Errors)}");
             return false;
@@ -83,8 +89,7 @@ public sealed class RerollService
 
     public bool AddToPrapor(int price)
     {
-        var tables = _db.GetTables();
-        if (!tables.Traders.TryGetValue(PraporId, out var prapor) || prapor?.Assort == null)
+        if (!_traders.TryGetValue(PraporId, out var prapor) || prapor?.Assort == null)
             return false;
 
         var assort = prapor.Assort;

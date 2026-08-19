@@ -1,15 +1,17 @@
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
-using SPTarkov.Server.Core.Models.Utils;
+using SPTarkov.Common.Models.Logging;
 using MissionControl.Services;
 
 namespace MissionControl.Load;
 
 /// <summary>
-/// Runs early (after DB load) to create the reroll item and add it to Prapor.
-/// Must run before assort caching happens.
+/// Runs early to create the reroll item and add it to Prapor.
+/// Must run before trader load/assort caching happens (TraderCallbacks).
+/// 4.1: the database is fully imported before any IOnLoad stage runs, so
+/// Preload is the earliest safe equivalent of the old Database stage.
 /// </summary>
-[Injectable(TypePriority = OnLoadOrder.Database + 50)]
+[Injectable(TypePriority = OnLoadOrder.Preload + 50)]
 public sealed class EarlyDb : IOnLoad
 {
     private readonly ISptLogger<EarlyDb> _logger;
@@ -23,7 +25,7 @@ public sealed class EarlyDb : IOnLoad
         _rerollService = rerollService;
     }
 
-    public Task OnLoad()
+    public Task OnLoadAsync(CancellationToken cancellationToken)
     {
         // Load config early so reroll_cost is available
         _configService.Load();

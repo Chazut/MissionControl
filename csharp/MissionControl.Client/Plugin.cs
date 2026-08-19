@@ -42,7 +42,7 @@ namespace MissionControl.Client
 
             try
             {
-                var session = Singleton<ClientApplication<ISession>>.Instance?.GetClientBackEndSession();
+                var session = Singleton<ClientApplication<IEftSession>>.Instance?.GetClientBackEndSession();
                 if (session?.Profile?.Inventory == null) return;
 
                 int count = 0;
@@ -91,7 +91,8 @@ namespace MissionControl.Client
 
         /// <summary>
         /// Force the main menu to reload the profile, which re-requests quest data.
-        /// Same approach as QuestsExtended: call MainMenuControllerClass.method_5().
+        /// Same approach as QuestsExtended: call MainMenuShowOperation.Init()
+        /// (4.0: MainMenuControllerClass.method_5()).
         /// </summary>
         private IEnumerator ReloadMainMenu()
         {
@@ -100,7 +101,7 @@ namespace MissionControl.Client
             bool success = false;
             try
             {
-                var app = Singleton<ClientApplication<ISession>>.Instance;
+                var app = Singleton<ClientApplication<IEftSession>>.Instance;
                 if (app != null)
                 {
                     foreach (var field in app.GetType().GetFields(
@@ -109,23 +110,23 @@ namespace MissionControl.Client
                         var val = field.GetValue(app);
                         if (val == null) continue;
 
-                        var method = val.GetType().GetMethod("method_5",
+                        var method = val.GetType().GetMethod("Init",
                             BindingFlags.Public | BindingFlags.Instance,
                             null, Type.EmptyTypes, null);
                         if (method == null) continue;
 
-                        var qcField = val.GetType().GetField("LocalQuestControllerClass",
+                        var qcField = val.GetType().GetField("_questController",
                             BindingFlags.Public | BindingFlags.Instance);
                         if (qcField == null) continue;
 
-                        Log.LogInfo("[MissionControl] Reloading profile via method_5()");
+                        Log.LogInfo("[MissionControl] Reloading profile via Init()");
                         method.Invoke(val, null);
                         success = true;
                         break;
                     }
                 }
                 if (!success)
-                    Log.LogWarning("[MissionControl] MainMenuControllerClass not found");
+                    Log.LogWarning("[MissionControl] MainMenuShowOperation not found");
             }
             catch (Exception ex)
             {
@@ -140,7 +141,7 @@ namespace MissionControl.Client
 
     public static class QuestRefresh
     {
-        public static void ApplyTemplates(LocalQuestControllerClass controller, List<RawQuestClass> templates)
+        public static void ApplyTemplates(QuestControllerClientBackend controller, List<QuestTemplate> templates)
         {
             var questBook = controller.Quests;
             if (questBook == null) return;
@@ -152,7 +153,7 @@ namespace MissionControl.Client
                     newIds.Add(t.Id.ToString());
             }
 
-            var toRemove = new List<QuestClass>();
+            var toRemove = new List<Quest>();
             foreach (var quest in questBook)
             {
                 if (quest.QuestStatus == EQuestStatus.AvailableForStart &&
@@ -166,8 +167,10 @@ namespace MissionControl.Client
 
             questBook.AddTemplates(templates);
 
-            var eventField = typeof(AbstractQuestControllerClass)
-                .GetField("Action_0", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            // 4.1: OnConditionalStatusChanged backing field is "action_0"
+            // (public, on ConditionalController<T>; was "Action_0" in 4.0)
+            var eventField = typeof(QuestController)
+                .GetField("action_0", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             if (eventField?.GetValue(controller) is Action onStatusChanged)
                 onStatusChanged.Invoke();
 
@@ -178,10 +181,10 @@ namespace MissionControl.Client
     /// <summary>
     /// After quest completion, refresh quest list.
     /// </summary>
-    [HarmonyPatch(typeof(LocalQuestControllerClass), nameof(LocalQuestControllerClass.SetConditionalStatus))]
+    [HarmonyPatch(typeof(QuestControllerClientBackend), nameof(QuestControllerClientBackend.SetConditionalStatus))]
     public static class SetConditionalStatus_Patch
     {
-        public static void Postfix(LocalQuestControllerClass __instance, QuestClass quest, EQuestStatus status)
+        public static void Postfix(QuestControllerClientBackend __instance, Quest quest, EQuestStatus status)
         {
             if (status == EQuestStatus.Success)
             {
@@ -189,11 +192,11 @@ namespace MissionControl.Client
             }
         }
 
-        private static IEnumerator RefreshAfterCompletion(LocalQuestControllerClass controller)
+        private static IEnumerator RefreshAfterCompletion(QuestControllerClientBackend controller)
         {
             yield return new WaitForSeconds(0.5f);
 
-            var questActions = controller.IQuestActions;
+            var questActions = controller.iQuestSession;
             if (questActions == null) yield break;
 
             var task = questActions.RequestQuestsTemplates(true);

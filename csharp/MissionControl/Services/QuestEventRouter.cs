@@ -4,8 +4,8 @@ using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.ItemEvent;
-using SPTarkov.Server.Core.Models.Eft.Quests;
-using SPTarkov.Server.Core.Models.Utils;
+using SPTarkov.Server.Core.Models.Enums;
+using SPTarkov.Common.Models.Logging;
 using SPTarkov.Server.Core.Utils;
 
 namespace MissionControl.Services;
@@ -26,7 +26,7 @@ public sealed class QuestEventRouter(
 ) : StaticRouter(jsonUtil, [
     new RouteAction<ItemEventRouterRequest>(
         "/client/game/profile/items/moving",
-        (url, requestData, sessionId, output) =>
+        (url, requestData, sessionId, output, cancellationToken) =>
             ProcessQuestEvents(sessionId, output, requestData, storage, configService, logger)
     )
 ])
@@ -45,11 +45,17 @@ public sealed class QuestEventRouter(
             return ValueTask.FromResult(output ?? string.Empty);
 
         // Check if this request contains a quest completion
+        // 4.1: Data entries are raw JsonElements; match on the Action name and read qid directly
         var completedQuestIds = new List<string>();
         foreach (var action in requestData.Data)
         {
-            if (action is CompleteQuestRequestData completeReq)
-                completedQuestIds.Add(completeReq.QuestId.ToString());
+            if (action.ValueKind != JsonValueKind.Object) continue;
+            if (!action.TryGetProperty("Action", out var actionProp) ||
+                !string.Equals(actionProp.GetString(), ItemEventActions.QUEST_COMPLETE, StringComparison.Ordinal))
+                continue;
+
+            if (action.TryGetProperty("qid", out var qidProp) && qidProp.GetString() is { } qid)
+                completedQuestIds.Add(qid);
         }
 
         if (completedQuestIds.Count == 0)

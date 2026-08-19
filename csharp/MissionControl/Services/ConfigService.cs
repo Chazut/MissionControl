@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using MissionControl.Models;
 using SPTarkov.DI.Annotations;
-using SPTarkov.Server.Core.Models.Utils;
+using SPTarkov.Common.Models.Logging;
 
 namespace MissionControl.Services;
 

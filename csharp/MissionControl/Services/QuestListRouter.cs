@@ -3,10 +3,10 @@ using System.Text.Json.Nodes;
 using MissionControl.Models;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
-using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Helpers.Profile;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Quests;
-using SPTarkov.Server.Core.Models.Utils;
+using SPTarkov.Common.Models.Logging;
 using SPTarkov.Server.Core.Utils;
 
 namespace MissionControl.Services;
@@ -22,7 +22,7 @@ public sealed class QuestListRouter(
 ) : StaticRouter(jsonUtil, [
     new RouteAction<ListQuestsRequestData>(
         "/client/quest/list",
-        (url, requestData, sessionId, output) =>
+        (url, requestData, sessionId, output, cancellationToken) =>
             FilterQuestList(sessionId, output, slotManager, storage, configService, profileHelper, logger)
     )
 ])

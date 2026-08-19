@@ -6,40 +6,50 @@
     <AssemblyVersion>1.0.1</AssemblyVersion>
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutputPath>C:\Games\SPT-4.0\BepInEx\plugins\</OutputPath>
+    <GameRoot>C:\Games\SPT-4.1</GameRoot>
+    <OutputPath>$(GameRoot)\BepInEx\plugins\</OutputPath>
   </PropertyGroup>
 
+  <!-- Keep the stale 4.0 DLLs vendored in dependencies\ out of the default item
+       globs: RAR treats them as candidate assembly files that outrank HintPath,
+       which silently shadows the GameRoot references below. -->
+  <ItemGroup>
+    <None Remove="dependencies\**" />
+    <Content Remove="dependencies\**" />
+  </ItemGroup>
+
+  <!-- SPT 4.1 game references: Assembly-CSharp on disk is already the launcher-patched (remapped) assembly -->
   <ItemGroup>
     <Reference Include="0Harmony">
-      <HintPath>dependencies\0Harmony.dll</HintPath>
+      <HintPath>$(GameRoot)\BepInEx\core\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="BepInEx">
-      <HintPath>dependencies\BepInEx.dll</HintPath>
+      <HintPath>$(GameRoot)\BepInEx\core\BepInEx.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>dependencies\Assembly-CSharp.dll</HintPath>
+      <HintPath>$(GameRoot)\EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>dependencies\UnityEngine.dll</HintPath>
+      <HintPath>$(GameRoot)\EscapeFromTarkov_Data\Managed\UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>dependencies\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(GameRoot)\EscapeFromTarkov_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>dependencies\UnityEngine.InputLegacyModule.dll</HintPath>
+      <HintPath>$(GameRoot)\EscapeFromTarkov_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Comfort">
-      <HintPath>dependencies\Comfort.dll</HintPath>
+      <HintPath>$(GameRoot)\EscapeFromTarkov_Data\Managed\Comfort.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestModule">
-      <HintPath>dependencies\UnityEngine.UnityWebRequestModule.dll</HintPath>
+      <HintPath>$(GameRoot)\EscapeFromTarkov_Data\Managed\UnityEngine.UnityWebRequestModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

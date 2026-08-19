@@ -1,29 +1,29 @@
 using System.Reflection;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
-using SPTarkov.Server.Core.Models.Utils;
-using SPTarkov.Server.Core.Services;
+using SPTarkov.Common.Models.Logging;
+using SPTarkov.Server.Core.Models.Spt.Tables;
 using MissionControl.Services;
 
 namespace MissionControl.Load;
 
-[Injectable(TypePriority = OnLoadOrder.PostSptModLoader + 100)]
+[Injectable(TypePriority = OnLoadOrder.PostLoad + 100)]
 public sealed class PostDb : IOnLoad
 {
     private readonly ISptLogger<PostDb> _logger;
     private readonly ConfigService _configService;
     private readonly ProfileStateStorage _storage;
-    private readonly DatabaseService _db;
+    private readonly TradersTable _traders;
 
-    public PostDb(ISptLogger<PostDb> logger, ConfigService configService, ProfileStateStorage storage, DatabaseService db)
+    public PostDb(ISptLogger<PostDb> logger, ConfigService configService, ProfileStateStorage storage, TradersTable traders)
     {
         _logger = logger;
         _configService = configService;
         _storage = storage;
-        _db = db;
+        _traders = traders;
     }
 
-    public Task OnLoad()
+    public Task OnLoadAsync(CancellationToken cancellationToken)
     {
         // Load vanilla quest IDs from disk
         var asmDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
@@ -56,11 +56,8 @@ public sealed class PostDb : IOnLoad
         var cfg = _configService.Config;
         if (cfg.trader_whitelist.Count == 0) return;
 
-        var traders = _db.GetTables()?.Traders;
-        if (traders == null) return;
-
         var nameToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (id, trader) in traders)
+        foreach (var (id, trader) in _traders)
         {
             var nickname = trader.Base?.Nickname;
             if (!string.IsNullOrEmpty(nickname))

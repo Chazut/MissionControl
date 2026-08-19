@@ -2,11 +2,11 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
-using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Helpers.Profile;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.ItemEvent;
 using SPTarkov.Server.Core.Models.Enums;
-using SPTarkov.Server.Core.Models.Utils;
+using SPTarkov.Common.Models.Logging;
 using SPTarkov.Server.Core.Utils;
 
 namespace MissionControl.Services;
@@ -27,7 +27,7 @@ public sealed class RerollRouter(
 ) : StaticRouter(jsonUtil, [
     new RouteAction<ItemEventRouterRequest>(
         "/client/game/profile/items/moving",
-        (url, requestData, sessionId, output) =>
+        (url, requestData, sessionId, output, cancellationToken) =>
             ProcessPurchase(sessionId, output, requestData, storage, profileHelper, inventoryHelper, configService, logger)
     )
 ])
