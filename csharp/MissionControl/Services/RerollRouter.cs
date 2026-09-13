@@ -12,9 +12,13 @@ using SPTarkov.Server.Core.Utils;
 namespace MissionControl.Services;
 
 /// <summary>
-/// Intercepts trader purchases. When the reroll item is purchased,
-/// removes it from inventory (both server-side and in the response via del[]),
-/// and clears quest slot selections.
+/// Intercepts trader purchases. When the reroll item is purchased:
+/// 1. the item is consumed server-side AND stripped from the response's new items, so the client
+///    never gets a stash item that no longer exists on the server (the old "let the client find it
+///    and reload" flow produced a stash item, a desync error on touch, then a reload);
+/// 2. the quest slots are cleared, in-progress quests become exempt;
+/// 3. the selection runs immediately and the fresh picks ride the same response, so the new quests
+///    are in the Tasks screen as soon as the purchase completes.
 /// </summary>
 [Injectable]
 public sealed class RerollRouter(
@@ -23,65 +27,59 @@ public sealed class RerollRouter(
     ProfileHelper profileHelper,
     InventoryHelper inventoryHelper,
     ConfigService configService,
+    QuestSelectionService selection,
     ISptLogger<RerollRouter> logger
 ) : StaticRouter(jsonUtil, [
     new RouteAction<ItemEventRouterRequest>(
         "/client/game/profile/items/moving",
         (url, requestData, sessionId, output, cancellationToken) =>
-            ProcessPurchase(sessionId, output, requestData, storage, profileHelper, inventoryHelper, configService, logger)
+            ProcessPurchase(sessionId, output, storage, profileHelper, inventoryHelper, configService, selection, logger)
     )
 ])
 {
     private static ValueTask<string> ProcessPurchase(
         MongoId sessionId,
         string? output,
-        ItemEventRouterRequest? requestData,
         ProfileStateStorage storage,
         ProfileHelper profileHelper,
         InventoryHelper inventoryHelper,
         ConfigService configService,
+        QuestSelectionService selection,
         ISptLogger<RerollRouter> logger)
     {
-        if (string.IsNullOrEmpty(output) || requestData?.Data == null)
+        if (string.IsNullOrEmpty(output))
             return ValueTask.FromResult(output ?? string.Empty);
 
         try
         {
-            using var doc = JsonDocument.Parse(output);
-            var root = doc.RootElement;
-
-            var profileChanges = root.TryGetProperty("data", out var data)
-                && data.TryGetProperty("profileChanges", out var pc) ? pc
-                : root.TryGetProperty("profileChanges", out pc) ? pc
-                : default;
-
-            if (profileChanges.ValueKind != JsonValueKind.Object)
+            var node = JsonNode.Parse(output);
+            var profileChanges = node?["data"]?["profileChanges"]?.AsObject()
+                ?? node?["profileChanges"]?.AsObject();
+            if (profileChanges == null)
                 return ValueTask.FromResult(output ?? string.Empty);
 
-            // Find reroll items in new items
+            // Find reroll items among the response's new items and strip them out of it
             var rerollItemIds = new List<string>();
-            foreach (var profileProp in profileChanges.EnumerateObject())
+            foreach (var profileProp in profileChanges)
             {
-                if (!profileProp.Value.TryGetProperty("items", out var items)) continue;
-                if (!items.TryGetProperty("new", out var newItems)) continue;
-                if (newItems.ValueKind != JsonValueKind.Array) continue;
+                var newItems = profileProp.Value?["items"]?["new"]?.AsArray();
+                if (newItems == null) continue;
 
-                foreach (var item in newItems.EnumerateArray())
+                for (int i = newItems.Count - 1; i >= 0; i--)
                 {
-                    var tpl = item.TryGetProperty("_tpl", out var tplProp) ? tplProp.GetString() : null;
-                    if (tpl != RerollService.RerollItemId) continue;
+                    var item = newItems[i];
+                    if (item?["_tpl"]?.GetValue<string>() != RerollService.RerollItemId) continue;
 
-                    var id = item.TryGetProperty("_id", out var idProp) ? idProp.GetString() : null;
+                    var id = item?["_id"]?.GetValue<string>();
                     if (id != null) rerollItemIds.Add(id);
+                    newItems.RemoveAt(i);
                 }
             }
 
             if (rerollItemIds.Count == 0)
                 return ValueTask.FromResult(output ?? string.Empty);
 
-            // Remove from server inventory only — leave in response so client receives it.
-            // The client polling will detect the item and trigger a profile reload,
-            // which will make the item disappear (already removed server-side).
+            // Consume the item server-side (the client never receives it)
             var pmcData = profileHelper.GetPmcProfile(sessionId);
             foreach (var rerollId in rerollItemIds)
             {
@@ -95,25 +93,25 @@ public sealed class RerollRouter(
             var previousCount = state.SelectedQuestIds.Count;
             state.SelectedQuestIds.Clear();
 
-            // Find all in-progress quests from the player's profile and mark them exempt
-            // These quests won't consume slots, giving the player breathing room
+            // In-progress quests don't consume slots after a reroll, giving the player breathing room
             state.ExemptQuestIds.Clear();
             if (pmcData?.Quests != null)
             {
                 foreach (var quest in pmcData.Quests)
                 {
                     if (quest.Status is QuestStatusEnum.Started or QuestStatusEnum.AvailableForFinish or QuestStatusEnum.FailRestartable)
-                    {
                         state.ExemptQuestIds.Add(quest.QId.ToString());
-                    }
                 }
             }
 
+            // Pick the new slots right away and ship them with the purchase response
+            var picks = selection.Run(sessionId, state);
             storage.Save(sessionIdStr, state);
+            var injected = selection.InjectSelected(profileChanges, state, picks);
 
-            logger.Info($"[MissionControl] Reroll purchased — cleared {previousCount} slots, exempted {state.ExemptQuestIds.Count} in-progress quests");
+            logger.Info($"[MissionControl] Reroll purchased — cleared {previousCount} slot(s), exempted {state.ExemptQuestIds.Count} in-progress quest(s), {injected} fresh pick(s) shown");
 
-            return ValueTask.FromResult(output ?? string.Empty);
+            return ValueTask.FromResult(node!.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
         }
         catch (Exception ex)
         {

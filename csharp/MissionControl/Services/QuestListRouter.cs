@@ -27,25 +27,6 @@ public sealed class QuestListRouter(
     )
 ])
 {
-    /// <summary>
-    /// Quests that are broken and should never be selected.
-    /// </summary>
-    private static readonly HashSet<string> QuestBlacklist =
-    [
-        "67a09761e720611a6a01f288" // Keeper's Word — broken in SPT PvE
-    ];
-
-    /// <summary>
-    /// Quests that should always be visible (bypass slot filter).
-    /// These are critical progression quests that unlock traders/content.
-    /// </summary>
-    private static readonly HashSet<string> QuestWhitelist =
-    [
-        "657315e4a6af4ab4b50f3459", // Saving the Mole (Mechanic) — prerequisite chain to unlock Jaeger
-        "5ac23c6186f7741247042bad", // Gunsmith Part 1 (Mechanic) — prerequisite chain to unlock Jaeger
-        "5d2495a886f77425cd51e403"  // Introduction (Mechanic) — unlocks Jaeger
-    ];
-
     private static class QuestStatus
     {
         public const int AvailableForStart = 1;
@@ -70,47 +51,6 @@ public sealed class QuestListRouter(
         if (quest?["status"] is JsonNode status)
             return status.GetValue<int>();
         return -1;
-    }
-
-    private static HashSet<string> GetUnlockedTraderIds(ProfileHelper profileHelper, MongoId sessionId)
-    {
-        var unlocked = new HashSet<string>();
-        try
-        {
-            var pmc = profileHelper.GetPmcProfile(sessionId);
-            if (pmc?.TradersInfo == null) return unlocked;
-
-            foreach (var (traderId, info) in pmc.TradersInfo)
-            {
-                if (info.Unlocked == true)
-                    unlocked.Add(traderId.ToString());
-            }
-        }
-        catch { }
-        return unlocked;
-    }
-
-    /// <summary>
-    /// Determines if a quest should bypass the slot filter entirely.
-    /// A quest is exempt if:
-    ///   - Its trader is in the whitelist
-    ///   - It's a modded quest and filter_modded_quests is false
-    /// </summary>
-    private static bool IsExemptFromFilter(string questId, string? traderId, ModConfig config, HashSet<string> resolvedTraderWhitelist)
-    {
-        // Critical progression quest → always visible
-        if (QuestWhitelist.Contains(questId))
-            return true;
-
-        // Whitelisted trader → always visible
-        if (traderId != null && resolvedTraderWhitelist.Contains(traderId))
-            return true;
-
-        // Modded quest and filtering disabled for mods → always visible
-        if (!config.filter_modded_quests && !VanillaQuestSnapshot.IsVanilla(questId))
-            return true;
-
-        return false;
     }
 
     private static ValueTask<string> FilterQuestList(
@@ -138,7 +78,7 @@ public sealed class QuestListRouter(
                 return ValueTask.FromResult(output);
             }
 
-            var unlockedTraders = GetUnlockedTraderIds(profileHelper, sessionId);
+            var unlockedTraders = QuestFilterRules.GetUnlockedTraderIds(profileHelper, sessionId);
 
             // Parse all quests from the response
             var allQuests = new List<(string id, int status, string? traderId, bool exempt)>();
@@ -151,9 +91,9 @@ public sealed class QuestListRouter(
                 if (id == null || status < 0) continue;
 
                 // Skip quests known to be broken in SPT PvE mode
-                if (QuestBlacklist.Contains(id)) continue;
+                if (QuestFilterRules.QuestBlacklist.Contains(id)) continue;
 
-                var exempt = IsExemptFromFilter(id, traderId, config, configService.ResolvedTraderWhitelist);
+                var exempt = QuestFilterRules.IsExemptFromFilter(id, traderId, config, configService.ResolvedTraderWhitelist);
                 allQuests.Add((id, status, traderId, exempt));
             }
 

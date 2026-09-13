@@ -9,7 +9,7 @@ namespace MissionControl.Services;
 /// <summary>
 /// Loads and holds the mod configuration from config/config.jsonc.
 /// </summary>
-[Injectable]
+[Injectable(InjectionType.Singleton)]
 public sealed partial class ConfigService
 {
     private readonly ISptLogger<ConfigService> _logger;

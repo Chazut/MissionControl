@@ -12,22 +12,25 @@ namespace MissionControl.Services;
 
 /// <summary>
 /// Intercepts quest completion events via /client/game/profile/items/moving.
-/// Two responsibilities:
+/// Three responsibilities:
 /// 1. Remove completed quests from SelectedQuestIds (free the slot)
-/// 2. Filter the response to hide newly unlocked quests that aren't in our
-///    selected set — prevents sequel quests from appearing immediately
+/// 2. Re-run the slot selection immediately so freed slots are refilled without
+///    waiting for the next /client/quest/list fetch (reboot / raid end)
+/// 3. Rewrite the response's newly unlocked quests: hide sequels that weren't
+///    selected, inject the fresh picks so they show up in the Tasks screen live
 /// </summary>
 [Injectable]
 public sealed class QuestEventRouter(
     JsonUtil jsonUtil,
     ProfileStateStorage storage,
     ConfigService configService,
+    QuestSelectionService selection,
     ISptLogger<QuestEventRouter> logger
 ) : StaticRouter(jsonUtil, [
     new RouteAction<ItemEventRouterRequest>(
         "/client/game/profile/items/moving",
         (url, requestData, sessionId, output, cancellationToken) =>
-            ProcessQuestEvents(sessionId, output, requestData, storage, configService, logger)
+            ProcessQuestEvents(sessionId, output, requestData, storage, configService, selection, logger)
     )
 ])
 {
@@ -39,6 +42,7 @@ public sealed class QuestEventRouter(
         ItemEventRouterRequest? requestData,
         ProfileStateStorage storage,
         ConfigService configService,
+        QuestSelectionService selection,
         ISptLogger<QuestEventRouter> logger)
     {
         if (string.IsNullOrEmpty(output) || requestData?.Data == null)
@@ -73,15 +77,19 @@ public sealed class QuestEventRouter(
                 if (state.SelectedQuestIds.Remove(questId) && debug)
                     logger.Info($"[MissionControl] Quest {questId[..8]}... completed — slot freed");
             }
+
+            // Re-run the selection on the live quest pool (the profile already reflects the
+            // completion at this point, so sequels are AvailableForStart here).
+            var picks = selection.Run(sessionId, state);
             storage.Save(sessionIdStr, state);
 
-            // Build the set of quest IDs that should remain visible
-            var allowedQuestIds = new HashSet<string>(state.SelectedQuestIds);
+            // Build the set of quest IDs that should remain visible in the response
+            var allowedQuestIds = new HashSet<string>(picks.VisibleIds);
+            allowedQuestIds.UnionWith(picks.ExemptIds);
             // Also allow the completed quests themselves (their status change must reach the client)
             foreach (var qid in completedQuestIds)
                 allowedQuestIds.Add(qid);
 
-            // Filter the response: remove newly unlocked quests from profileChanges
             var node = JsonNode.Parse(output);
             if (node == null)
                 return ValueTask.FromResult(output ?? string.Empty);
@@ -91,6 +99,7 @@ public sealed class QuestEventRouter(
             if (profileChanges == null)
                 return ValueTask.FromResult(output ?? string.Empty);
 
+            // Filter the response: remove newly unlocked quests that aren't allowed
             int removed = 0;
             foreach (var profileProp in profileChanges)
             {
@@ -115,7 +124,6 @@ public sealed class QuestEventRouter(
                     else if (quest?["Status"] is JsonNode stCap)
                         status = stCap.GetValue<int>();
 
-                    // Remove AvailableForStart quests that aren't in our allowed set
                     if (status == AvailableForStart && !allowedQuestIds.Contains(id))
                     {
                         questsNode.RemoveAt(i);
@@ -126,8 +134,15 @@ public sealed class QuestEventRouter(
                 }
             }
 
-            if (removed > 0)
+            // Inject fresh picks that aren't already in the response, so the new quests appear in
+            // the Tasks screen without a reboot.
+            var injected = selection.InjectSelected(profileChanges, state, picks);
+
+            if (removed > 0 || injected > 0)
+            {
+                logger.Info($"[MissionControl] Quest completion: {removed} sequel(s) hidden, {injected} fresh pick(s) shown");
                 return ValueTask.FromResult(node.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
+            }
         }
         catch (Exception ex)
         {
