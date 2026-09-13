@@ -7,13 +7,13 @@
 
   // When true, modded quests are subject to the slot limit like vanilla quests.
   // When false, modded quests bypass the filter entirely (always visible).
-  "filter_modded_quests": false,
+  "filter_modded_quests": true,
 
   // Trader names whose quests bypass the slot filter entirely (always visible).
   // Case-insensitive. Works with both vanilla and modded traders.
   // Example: ["Therapist", "Kolya", "Guiding Light"]
   // If a name is not found, available traders will be listed in the server log.
-  "trader_whitelist": ["Kolya", "Guiding Light"],
+  "trader_whitelist": ["Quartermaster"],
 
   // Cost in roubles for the reroll item at Prapor.
   "reroll_cost": 50000,
