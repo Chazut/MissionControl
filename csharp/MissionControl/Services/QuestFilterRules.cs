@@ -19,6 +19,20 @@ public static class QuestFilterRules
     ];
 
     /// <summary>
+    /// Traders whose quests are never offered, whatever the config says. The BTR Driver's 15 quests (Hot Wheels,
+    /// Shipping Delay, Battery Change, Protect the Sky...) all hinge on the BTR taxi and its paid services, which
+    /// is not a quest line anyone wants filling their limited slots.
+    /// </summary>
+    public static readonly HashSet<string> TraderBlacklist =
+    [
+        "656f0f98d80a697f855d34b1" // BTR Driver
+    ];
+
+    /// <summary>True when the quest itself or its trader is blacklisted: hidden from the list, never selected.</summary>
+    public static bool IsBlacklisted(string questId, string? traderId)
+        => QuestBlacklist.Contains(questId) || (traderId != null && TraderBlacklist.Contains(traderId));
+
+    /// <summary>
     /// Quests that should always be visible (bypass slot filter).
     /// These are critical progression quests that unlock traders/content.
     /// </summary>

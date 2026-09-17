@@ -90,8 +90,8 @@ public sealed class QuestListRouter(
 
                 if (id == null || status < 0) continue;
 
-                // Skip quests known to be broken in SPT PvE mode
-                if (QuestFilterRules.QuestBlacklist.Contains(id)) continue;
+                // Skip quests known to be broken in SPT PvE mode and the BTR Driver's quest line
+                if (QuestFilterRules.IsBlacklisted(id, traderId)) continue;
 
                 var exempt = QuestFilterRules.IsExemptFromFilter(id, traderId, config, configService.ResolvedTraderWhitelist);
                 allQuests.Add((id, status, traderId, exempt));
