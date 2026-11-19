@@ -15,6 +15,7 @@ With many mods installed, the quest list becomes unmanageable. You don't know wh
 - When you **complete** a quest, a new random one takes its slot immediately
 - **Failed quests** stay in their slot — you can restart them from the UI
 - Selections are **persisted** per profile across server restarts
+- Story chapters and hidden progression steps bypass the slot limit, including VisitAPI's Tour and its trader unlocks. Their original prerequisites still apply.
 - The **BTR Driver's quests** are never offered (his whole line hinges on the BTR taxi), nor is Keeper's Word, broken in SPT. Both are hardcoded, no option
 
 ### Example

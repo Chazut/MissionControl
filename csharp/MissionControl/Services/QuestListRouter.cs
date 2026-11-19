@@ -82,6 +82,8 @@ public sealed class QuestListRouter(
 
             // Parse all quests from the response
             var allQuests = new List<(string id, int status, string? traderId, bool exempt)>();
+            int blacklistedOffers = 0;
+            int storyOrHidden = 0;
             foreach (var quest in dataElement.EnumerateArray())
             {
                 var id = quest.TryGetProperty("_id", out var idProp) ? idProp.GetString() : null;
@@ -90,8 +92,19 @@ public sealed class QuestListRouter(
 
                 if (id == null || status < 0) continue;
 
+                if (QuestFilterRules.IsStoryOrHidden(quest))
+                {
+                    allQuests.Add((id, status, traderId, true));
+                    storyOrHidden++;
+                    continue;
+                }
+
                 // Skip quests known to be broken in SPT PvE mode and the BTR Driver's quest line
-                if (QuestFilterRules.IsBlacklisted(id, traderId)) continue;
+                if (QuestFilterRules.IsBlacklisted(id, traderId))
+                {
+                    if (status == QuestStatus.AvailableForStart) blacklistedOffers++;
+                    continue;
+                }
 
                 var exempt = QuestFilterRules.IsExemptFromFilter(id, traderId, config, configService.ResolvedTraderWhitelist);
                 allQuests.Add((id, status, traderId, exempt));
@@ -131,7 +144,7 @@ public sealed class QuestListRouter(
             int totalAvailable = allQuests.Count(q => q.status == QuestStatus.AvailableForStart);
             int visibleAvailable = visibleIds.Count(vid =>
                 allQuests.Any(q => q.id == vid && q.status == QuestStatus.AvailableForStart));
-            int filteredOut = totalAvailable - visibleAvailable;
+            int filteredOut = totalAvailable - visibleAvailable + blacklistedOffers;
 
             if (config.debug)
             {
@@ -214,7 +227,7 @@ public sealed class QuestListRouter(
                 }
             }
 
-            logger.Info($"[MissionControl] Filtered quest list: showing {questArray.Count}/{dataElement.GetArrayLength()} quests (slots: {config.max_slots})");
+            logger.Info($"[MissionControl] Filtered quest list: showing {questArray.Count}/{dataElement.GetArrayLength()} quests (slots: {config.max_slots}, story/hidden passed through: {storyOrHidden})");
 
             return ValueTask.FromResult(node?.ToJsonString(new JsonSerializerOptions { WriteIndented = false }) ?? output);
         }

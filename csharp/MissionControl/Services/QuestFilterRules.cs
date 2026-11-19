@@ -1,6 +1,9 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using MissionControl.Models;
 using SPTarkov.Server.Core.Helpers.Profile;
 using SPTarkov.Server.Core.Models.Common;
+using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 
 namespace MissionControl.Services;
 
@@ -10,6 +13,31 @@ namespace MissionControl.Services;
 /// </summary>
 public static class QuestFilterRules
 {
+    // Story chapters and their hidden helper quests must reach the client with their original
+    // conditions. VisitAPI decides when to start them, including stages owned by locked traders.
+    public static bool IsStoryOrHidden(JsonElement quest) =>
+        HasTrueFlag(quest, "isStoryQuest") || HasTrueFlag(quest, "notDisplayedQuest");
+
+    private static bool HasTrueFlag(JsonElement quest, string key) =>
+        quest.TryGetProperty(key, out var flag) && flag.ValueKind == JsonValueKind.True;
+
+    public static bool IsStoryOrHidden(JsonObject quest) =>
+        quest["isStoryQuest"]?.GetValueKind() == JsonValueKind.True ||
+        quest["notDisplayedQuest"]?.GetValueKind() == JsonValueKind.True;
+
+    // SPT 4.1.6 keeps these fields in JsonExtensionData. Earlier versions can omit the bag.
+    private static readonly Func<Quest, Dictionary<string, object?>?>? ReadExtras =
+        typeof(Quest).GetProperty("ExtensionData")?.GetMethod?.CreateDelegate<Func<Quest, Dictionary<string, object?>?>>();
+
+    public static bool IsStoryOrHidden(Quest quest)
+    {
+        var extras = ReadExtras?.Invoke(quest);
+        return extras != null && (HasTrueFlag(extras, "isStoryQuest") || HasTrueFlag(extras, "notDisplayedQuest"));
+    }
+
+    private static bool HasTrueFlag(Dictionary<string, object?> extras, string key) =>
+        extras.TryGetValue(key, out var flag) && flag is true or JsonElement { ValueKind: JsonValueKind.True };
+
     /// <summary>
     /// Quests that are broken and should never be selected.
     /// </summary>

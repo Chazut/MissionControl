@@ -52,6 +52,12 @@ public sealed class QuestSelectionService(
             var status = (int?)quest.SptStatus ?? -1;
             var traderId = quest.TraderId.ToString();
 
+            if (QuestFilterRules.IsStoryOrHidden(quest))
+            {
+                selection.ExemptIds.Add(id);
+                continue;
+            }
+
             if (QuestFilterRules.IsBlacklisted(id, traderId)) continue;
 
             if (status == AvailableForStart)

@@ -124,7 +124,8 @@ public sealed class QuestEventRouter(
                     else if (quest?["Status"] is JsonNode stCap)
                         status = stCap.GetValue<int>();
 
-                    if (status == AvailableForStart && !allowedQuestIds.Contains(id))
+                    if (status == AvailableForStart && !allowedQuestIds.Contains(id) &&
+                        !(quest is JsonObject template && QuestFilterRules.IsStoryOrHidden(template)))
                     {
                         questsNode.RemoveAt(i);
                         removed++;
