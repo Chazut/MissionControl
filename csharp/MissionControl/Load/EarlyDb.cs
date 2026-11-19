@@ -6,7 +6,8 @@ using MissionControl.Services;
 namespace MissionControl.Load;
 
 /// <summary>
-/// Runs early to create the reroll item and add it to Prapor.
+/// Runs early to create the reroll item and add it to Prapor and Croupier (if installed).
+/// Croupier registers its assort at Preload + 1, before this stage.
 /// Must run before trader load/assort caching happens (TraderCallbacks).
 /// 4.1: the database is fully imported before any IOnLoad stage runs, so
 /// Preload is the earliest safe equivalent of the old Database stage.
@@ -36,6 +37,9 @@ public sealed class EarlyDb : IOnLoad
                 _logger.Info($"[MissionControl] Reroll item added to Prapor ({_configService.Config.reroll_cost}₽)");
             else
                 _logger.Warning("[MissionControl] Failed to add reroll item to Prapor's assort");
+
+            if (_rerollService.AddToCroupier(_configService.Config.reroll_cost))
+                _logger.Info($"[MissionControl] Reroll item added to Croupier ({_configService.Config.reroll_cost}₽)");
         }
 
         return Task.CompletedTask;

@@ -15,7 +15,7 @@
   // If a name is not found, available traders will be listed in the server log.
   "trader_whitelist": ["Quartermaster"],
 
-  // Cost in roubles for the reroll item at Prapor.
+  // Cost in roubles for the reroll item at Prapor and Croupier (if installed).
   "reroll_cost": 50000,
 
   // Enable verbose logging for debugging.

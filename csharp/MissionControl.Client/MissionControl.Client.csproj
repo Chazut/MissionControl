@@ -19,6 +19,8 @@
 
   <!-- SPT 4.1 game references: Assembly-CSharp on disk is already the launcher-patched (remapped) assembly -->
   <ItemGroup>
+    <EmbeddedResource Include="../../branding/mission-control.png" LogicalName="MissionControl.Uplink.png" />
+    <Reference Include="UnityEngine.ImageConversionModule" HintPath="$(GameRoot)\EscapeFromTarkov_Data\Managed\UnityEngine.ImageConversionModule.dll" Private="false" />
     <Reference Include="0Harmony">
       <HintPath>$(GameRoot)\BepInEx\core\0Harmony.dll</HintPath>
       <Private>false</Private>

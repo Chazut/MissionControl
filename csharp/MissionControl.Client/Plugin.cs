@@ -20,6 +20,8 @@ public sealed class Plugin : BaseUnityPlugin
     private void Awake()
     {
         Log = Logger;
+        try { UplinkIcon.Load(); }
+        catch (Exception ex) { Log.LogWarning($"Could not load the uplink icon: {ex.Message}"); }
         new Harmony("com.chazut.missioncontrol.client").PatchAll();
     }
 }
@@ -32,7 +34,7 @@ internal static class RerollPurchasePatch
 
     private static void Postfix(Item item, QuestController ____questController)
     {
-        if (item?.TemplateId.ToString() != "a0b1c2d3e4f5000000000001" ||
+        if (item?.TemplateId.ToString() != UplinkIcon.TemplateId ||
             ____questController is not QuestControllerClientBackend controller)
             return;
 

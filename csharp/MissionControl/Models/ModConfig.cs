@@ -21,7 +21,7 @@ public sealed class ModConfig
     public List<string> trader_whitelist { get; set; } = [];
 
     /// <summary>
-    /// Cost in roubles to reroll quest slots (buy the reroll item at Prapor).
+    /// Cost in roubles to reroll quest slots (buy at Prapor or Croupier, if installed).
     /// </summary>
     public int reroll_cost { get; set; } = 50000;
 

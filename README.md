@@ -1,3 +1,5 @@
+<img src="branding/mission-control.svg" width="88" alt="Mission Control uplink" />
+
 # MissionControl
 
 An SPT 4.1 mod that limits the number of quests visible at any time. Instead of being overwhelmed by dozens of available quests, you only see a handful — picked randomly from your unlocked quests.
@@ -26,7 +28,7 @@ If installed on an existing profile with many active quests, no new quests will 
 
 ## Reroll
 
-Buy the **"Mission Reroll"** item at **Prapor** (LL1). When purchased:
+Buy the **"Mission Reroll"** item at **Prapor** or **Croupier** (if installed), both at LL1 and the same configured price. When purchased:
 
 1. All your currently in-progress quests become **exempt** — they stay visible but no longer consume slots
 2. **3 new random quests** are assigned to your slots
@@ -69,7 +71,7 @@ Edit `config/config.jsonc`:
   // Case-insensitive. Works with both vanilla and modded traders.
   "trader_whitelist": ["Quartermaster"],
 
-  // Cost in roubles for the reroll item at Prapor.
+  // Cost in roubles for the reroll item at Prapor and Croupier (if installed).
   "reroll_cost": 50000,
 
   // Enable verbose logging for debugging.
@@ -87,7 +89,7 @@ Edit `config/config.jsonc`:
 | `max_slots` | `3` | Total quest slots (in-progress + available) |
 | `filter_modded_quests` | `true` | If `false`, modded quests are always visible and don't consume slots |
 | `trader_whitelist` | `["Quartermaster"]` | Trader names (case-insensitive) whose quests bypass the filter |
-| `reroll_cost` | `50000` | Rouble cost for the Mission Reroll item at Prapor |
+| `reroll_cost` | `50000` | Rouble cost for the Mission Reroll item at Prapor and Croupier (if installed) |
 | `debug` | `false` | Verbose server logging |
 | `debug_refresh` | `false` | Clear saved selections on server start |
 

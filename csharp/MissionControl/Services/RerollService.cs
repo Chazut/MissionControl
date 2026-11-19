@@ -13,14 +13,12 @@ public sealed class RerollService
 {
     public const string RerollItemId = "a0b1c2d3e4f5000000000001";
 
-    // Clone from Secure Flash Drive — same base that TTC uses for 300+ cards
-    private const string CloneFrom = "573474f924597738002c6174";
-    // Parent class: SpecItem (special barter items) — same as TTC cards
+    private const string UltralinkSatelliteStation = "6389c88b33a719183c7f63b6";
     private const string ParentClass = "5447e0e74bdc2d3c308b4567";
-    // Handbook category: Info items
-    private const string HandbookCategory = "5b47574386f77428ca22b335";
+    private const string ElectronicsCategory = "5b47574386f77428ca22b2ef";
 
     private const string PraporId = "54cb50c76803fa8b248b4571";
+    private const string CroupierId = "1337bb0dd843363fcd1be869";
     private const string RoublesTpl = "5449016a4bdc2d6f028b456f";
 
     private readonly TradersTable _traders;
@@ -43,40 +41,45 @@ public sealed class RerollService
         var details = new NewItemFromCloneDetails
         {
             NewId = RerollItemId,
-            ItemTplToClone = CloneFrom,
+            ItemTplToClone = UltralinkSatelliteStation,
             ParentId = ParentClass,
             NewItemName = "item_missioncontrol_reroll",
-            HandbookParentId = HandbookCategory,
+            HandbookParentId = ElectronicsCategory,
             HandbookPriceRoubles = 50000,
             FleaPriceRoubles = null,
             AddToFleaPriceDb = false,
             AddToWeaponShelf = false,
-            Locales = new Dictionary<string, LocaleDetails>
-            {
-                ["en"] = new LocaleDetails
-                {
-                    Name = "Mission Reroll",
-                    ShortName = "Reroll",
-                    Description = "Buy this item to reroll your quest slots. New random quests will be assigned immediately."
-                }
-            }
-        };
-
-        try
-        {
-            details.OverrideProperties = new TemplateItemProperties
+            OverrideProperties = new TemplateItemProperties
             {
                 BackgroundColor = "blue",
                 Width = 1,
                 Height = 1,
                 StackMaxSize = 1,
                 Weight = 0,
+                DiscardLimit = 1,
+                ExamineExperience = 10,
+                LootExperience = 40,
+                RarityPvE = "Common",
                 ExaminedByDefault = true,
                 CanSellOnRagfair = false,
                 CanRequireOnRagfair = false
-            };
-        }
-        catch { }
+            },
+            Locales = new Dictionary<string, LocaleDetails>
+            {
+                ["en"] = new LocaleDetails
+                {
+                    Name = "Mission Reroll - Uplink",
+                    ShortName = "Reroll",
+                    Description = "Transmit a new task request to Mission Control. Buying this uplink refreshes the missions on offer. Your accepted missions stay active."
+                },
+                ["fr"] = new LocaleDetails
+                {
+                    Name = "Relance de missions - Liaison orbitale",
+                    ShortName = "Relance",
+                    Description = "Transmettez une nouvelle demande à Mission Control. L'achat de cette liaison renouvelle les missions proposées. Vos missions acceptées restent actives."
+                }
+            }
+        };
 
         var result = _customItemService.CreateItemFromClone(details);
         if (!result.Success)
@@ -87,12 +90,16 @@ public sealed class RerollService
         return true;
     }
 
-    public bool AddToPrapor(int price)
+    public bool AddToPrapor(int price) => AddToTrader(PraporId, price);
+
+    public bool AddToCroupier(int price) => AddToTrader(CroupierId, price);
+
+    private bool AddToTrader(string traderId, int price)
     {
-        if (!_traders.TryGetValue(PraporId, out var prapor) || prapor?.Assort == null)
+        if (!_traders.TryGetValue(traderId, out var trader) || trader?.Assort == null)
             return false;
 
-        var assort = prapor.Assort;
+        var assort = trader.Assort;
         if (assort.Items is not List<Item> items ||
             assort.BarterScheme is not Dictionary<MongoId, List<List<BarterScheme>>> bs ||
             assort.LoyalLevelItems is not Dictionary<MongoId, int> lli)
