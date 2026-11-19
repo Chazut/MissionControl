@@ -95,12 +95,14 @@ public static class QuestFilterRules
         return false;
     }
 
-    public static HashSet<string> GetUnlockedTraderIds(ProfileHelper profileHelper, MongoId sessionId)
+    public static HashSet<string> GetUnlockedTraderIds(ProfileHelper profileHelper, MongoId sessionId, out int prestige)
     {
         var unlocked = new HashSet<string>();
+        prestige = 0;
         try
         {
             var pmc = profileHelper.GetPmcProfile(sessionId);
+            prestige = pmc?.Info?.PrestigeLevel ?? 0;
             if (pmc?.TradersInfo == null) return unlocked;
 
             foreach (var (traderId, info) in pmc.TradersInfo)

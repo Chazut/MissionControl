@@ -1,11 +1,25 @@
 namespace MissionControl.Models;
 
-public sealed class ModConfig
+public sealed record ModConfig
 {
     /// <summary>
     /// Maximum number of quests visible at once (in-progress + available combined).
     /// </summary>
     public int max_slots { get; set; } = 3;
+
+    // A tier applies until the next configured tier. An old config has no overrides.
+    public SortedDictionary<int, int> max_slots_by_prestige { get; set; } = [];
+
+    public int SlotsFor(int prestige)
+    {
+        var slots = Math.Max(0, max_slots);
+        foreach (var (level, limit) in max_slots_by_prestige)
+        {
+            if (level > prestige) break;
+            if (level > 0 && limit >= 0) slots = limit;
+        }
+        return slots;
+    }
 
     /// <summary>
     /// When true, modded quests are subject to the slot limit like vanilla quests.

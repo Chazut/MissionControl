@@ -1,10 +1,11 @@
 using SPTarkov.Server.Core.Models.Spt.Mod;
+using SPTarkov.Server.Web;
 using SemVerVersion = SemanticVersioning.Version;
 using SemVerRange = SemanticVersioning.Range;
 
 namespace MissionControl.Mod;
 
-public sealed record MissionControlMetadata : IModMetadata
+public sealed record MissionControlMetadata : IModMetadata, IModBlazorMetadata
 {
     public string ModGuid { get; init; } = "com.chazut.missioncontrol";
     public string Name { get; init; } = "MissionControl";
@@ -17,4 +18,7 @@ public sealed record MissionControlMetadata : IModMetadata
     public Dictionary<string, SemVerRange>? ModDependencies { get; init; }
     public string? Url { get; init; } = "https://github.com/Chazut/MissionControl";
     public string License { get; init; } = "MIT";
+    public string? WWWRootUrl { get; init; }
+    public string? HomePage { get; init; } = "/missioncontrol";
+    public string? HomePageDescription { get; init; } = "Configure MissionControl";
 }

@@ -78,7 +78,8 @@ public sealed class QuestListRouter(
                 return ValueTask.FromResult(output);
             }
 
-            var unlockedTraders = QuestFilterRules.GetUnlockedTraderIds(profileHelper, sessionId);
+            var unlockedTraders = QuestFilterRules.GetUnlockedTraderIds(profileHelper, sessionId, out var prestige);
+            var slots = config.SlotsFor(prestige);
 
             // Parse all quests from the response
             var allQuests = new List<(string id, int status, string? traderId, bool exempt)>();
@@ -131,7 +132,7 @@ public sealed class QuestListRouter(
             // Compute visible set from slot manager
             var sessionIdStr = sessionId.ToString();
             var state = storage.Load(sessionIdStr);
-            var visibleIds = slotManager.GetVisibleQuestIds(eligibleQuests, state, config.max_slots);
+            var visibleIds = slotManager.GetVisibleQuestIds(eligibleQuests, state, slots);
             storage.Save(sessionIdStr, state);
 
             // Add all exempt quest IDs to visible set
@@ -227,7 +228,7 @@ public sealed class QuestListRouter(
                 }
             }
 
-            logger.Info($"[MissionControl] Filtered quest list: showing {questArray.Count}/{dataElement.GetArrayLength()} quests (slots: {config.max_slots}, story/hidden passed through: {storyOrHidden})");
+            logger.Info($"[MissionControl] Filtered quest list: showing {questArray.Count}/{dataElement.GetArrayLength()} quests (prestige: {prestige}, slots: {slots}, story/hidden passed through: {storyOrHidden})");
 
             return ValueTask.FromResult(node?.ToJsonString(new JsonSerializerOptions { WriteIndented = false }) ?? output);
         }

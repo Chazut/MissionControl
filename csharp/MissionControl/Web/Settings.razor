@@ -1,0 +1,138 @@
+@page "/missioncontrol"
+@using MissionControl.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@inject ConfigService Store
+
+<PageTitle>Mission Control | Quest settings</PageTitle>
+<style>@((MarkupString)Styles)</style>
+<main class="mc-shell">
+    <header class="mc-hero">
+        <img src="@Emblem" alt="" width="80" height="80" />
+        <div><h1>Mission Control</h1><p>Quest settings</p></div>
+        <div class="mc-orbit" aria-hidden="true"><i></i><b></b></div>
+    </header>
+    @if (document != null)
+    {
+        <form @onsubmit="Save" @onsubmit:preventDefault>
+            <div class="mc-columns">
+                <section class="mc-card">
+                    <h2>Quest slots</h2>
+                    <p class="mc-help">Active missions and new offers share this limit. Accepted missions stay active when the limit drops.</p>
+                    <label class="mc-base"><span>Base limit <small>Before the first prestige override</small></span>
+                        <input type="number" min="0" required step="1" @bind="baseLimit" @bind:event="oninput" />
+                    </label>
+                    <h3>Prestige progression</h3>
+                    <p class="mc-help">Leave a limit blank to inherit the previous tier.</p>
+                    <table>
+                        <thead><tr><th scope="col">Prestige</th><th scope="col">Slot limit</th><th scope="col">Effective</th></tr></thead>
+                        <tbody>
+                            @{ int effective = Math.Max(0, baseLimit ?? 0); }
+                            @foreach (var tier in tiers)
+                            {
+                                effective = tier.Limit ?? effective;
+                                <tr @key="tier.Level">
+                                    <th scope="row"><span class="mc-rank">P</span>@tier.Level</th>
+                                    <td><input aria-label="@($"Prestige {tier.Level} slot limit")" type="number" min="0" step="1" placeholder="Inherit" @bind="tier.Limit" @bind:event="oninput" /></td>
+                                    <td><span class="mc-meter" aria-hidden="true"><i style="@($"width:{100d * effective / Scale:0}%")"></i></span><span class="mc-value">@effective</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button type="button" class="mc-link" @onclick="AddTier">+ Add prestige level</button>
+                </section>
+                <div class="mc-stack">
+                    <section class="mc-card">
+                        <h2>Trader settings</h2>
+                        <label class="mc-field">Reroll price (₽)
+                            <input type="number" min="0" step="1" required @bind="price" />
+                        </label>
+                        <label class="mc-check"><input type="checkbox" @bind="filterModded" /> Include modded quests in the limit</label>
+                        <label class="mc-field">Exempt traders
+                            <textarea rows="3" @bind="traders"></textarea><small>One trader name per line. Their quests bypass the slot limit.</small>
+                        </label>
+                    </section>
+                    <details class="mc-card mc-advanced">
+                        <summary>Diagnostics</summary>
+                        <label class="mc-check"><input type="checkbox" @bind="debug" /> Verbose logging</label>
+                        <label class="mc-check"><input type="checkbox" @bind="resetOnStart" /> Reset saved offers on each server start</label>
+                    </details>
+                </div>
+            </div>
+            <footer class="mc-save">
+                <div><span role="status" class="mc-status">@message</span><small>Slot limits apply on the next quest refresh. Other settings apply after a server restart.</small></div>
+                <div class="mc-actions"><button type="button" @onclick="Reload">Reload saved</button><button type="submit" class="mc-primary">Save settings</button></div>
+            </footer>
+        </form>
+    }
+    else
+    {
+        <p role="alert" class="mc-card">@message <button type="button" @onclick="Reload">Retry</button></p>
+    }
+</main>
+
+@code {
+    private sealed class Tier(int level, int? limit) { public int Level { get; } = level; public int? Limit { get; set; } = limit; }
+    private ConfigDocument? document;
+    private List<Tier> tiers = [];
+    private int? baseLimit, price;
+    private bool filterModded, debug, resetOnStart;
+    private string traders = "", message = "";
+    private int Scale => Math.Max(1, Math.Max(baseLimit ?? 0, tiers.Max(t => t.Limit ?? 0)));
+
+    private static string Resource(string name)
+    {
+        using var stream = typeof(Settings).Assembly.GetManifestResourceStream(name)!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+    private static readonly string Styles = Resource("MissionControl.Settings.css");
+    private static readonly string Emblem = "data:image/svg+xml;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(Resource("MissionControl.Emblem.svg")));
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload()
+    {
+        try
+        {
+            document = Store.ReadDocument();
+            var cfg = document.Settings;
+            baseLimit = cfg.max_slots;
+            price = cfg.reroll_cost;
+            filterModded = cfg.filter_modded_quests;
+            debug = cfg.debug;
+            resetOnStart = cfg.debug_refresh;
+            traders = string.Join("\n", cfg.trader_whitelist);
+            tiers = Enumerable.Range(1, 6).Union(cfg.max_slots_by_prestige.Keys.Where(k => k > 0)).Order()
+                .Select(k => new Tier(k, cfg.max_slots_by_prestige.TryGetValue(k, out var n) ? n : null)).ToList();
+            message = "";
+        }
+        catch (Exception ex) { document = null; message = $"Could not load settings. {ex.Message}"; }
+    }
+
+    private void AddTier()
+    {
+        // Fill gaps as well, including when a manually configured higher prestige exists.
+        int next = 1;
+        while (tiers.Any(t => t.Level == next)) next++;
+        tiers.Add(new Tier(next, null));
+        tiers.Sort((a, b) => a.Level.CompareTo(b.Level));
+    }
+
+    private void Save()
+    {
+        if (document == null || baseLimit == null || price == null) return;
+        try
+        {
+            var edited = document.Settings with {
+                max_slots = baseLimit.Value, reroll_cost = price.Value,
+                max_slots_by_prestige = new(tiers.Where(t => t.Limit.HasValue).ToDictionary(t => t.Level, t => t.Limit!.Value)),
+                filter_modded_quests = filterModded, debug = debug, debug_refresh = resetOnStart,
+                trader_whitelist = traders.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList()
+            };
+            document = Store.Save(document, edited);
+            message = "Settings saved.";
+        }
+        catch (Exception ex) { message = ex.Message; }
+    }
+}

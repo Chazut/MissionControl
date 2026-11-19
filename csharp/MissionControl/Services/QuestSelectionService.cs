@@ -43,7 +43,7 @@ public sealed class QuestSelectionService(
         var config = configService.Config;
         var selection = new Selection();
         var clientQuests = questHelper.GetClientQuests(sessionId);
-        var unlockedTraders = QuestFilterRules.GetUnlockedTraderIds(profileHelper, sessionId);
+        var unlockedTraders = QuestFilterRules.GetUnlockedTraderIds(profileHelper, sessionId, out var prestige);
 
         var eligibleQuests = new List<(string id, int status)>();
         foreach (var quest in clientQuests)
@@ -80,7 +80,7 @@ public sealed class QuestSelectionService(
             }
         }
 
-        selection.VisibleIds = slotManager.GetVisibleQuestIds(eligibleQuests, state, config.max_slots);
+        selection.VisibleIds = slotManager.GetVisibleQuestIds(eligibleQuests, state, config.SlotsFor(prestige));
         return selection;
     }
 

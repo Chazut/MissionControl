@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -24,6 +24,11 @@
 
   <!-- SPT 4.1 server references -->
   <ItemGroup Condition="'$(SPT_DIR)' != ''">
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Reference Include="SPTarkov.Server.Web" HintPath="$(SPT_DIR)\SPTarkov.Server.Web.dll" Private="false" />
+    <EmbeddedResource Include="../../branding/mission-control.svg" LogicalName="MissionControl.Emblem.svg" />
+    <EmbeddedResource Include="../../config/config.jsonc" LogicalName="MissionControl.DefaultConfig.jsonc" />
+    <EmbeddedResource Include="Web/Settings.css" LogicalName="MissionControl.Settings.css" />
     <Reference Include="SPTarkov.Server.Core">
       <HintPath>$(SPT_DIR)\SPTarkov.Server.Core.dll</HintPath>
       <Private>false</Private>
@@ -64,6 +69,7 @@
     <ItemGroup>
       <ConfigFiles Include="..\..\config\**\*.*" />
     </ItemGroup>
-    <Copy SourceFiles="@(ConfigFiles)" DestinationFiles="@(ConfigFiles->'$(ModDeployDir)\config\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="%(ConfigFiles.FullPath)" DestinationFiles="$(ModDeployDir)\config\%(ConfigFiles.RecursiveDir)%(ConfigFiles.Filename)%(ConfigFiles.Extension)"
+          Condition="!Exists('$(ModDeployDir)\config\%(ConfigFiles.RecursiveDir)%(ConfigFiles.Filename)%(ConfigFiles.Extension)')" />
   </Target>
 </Project>

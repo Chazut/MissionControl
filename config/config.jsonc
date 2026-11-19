@@ -5,6 +5,9 @@
   // If you already have this many quests in progress, no new quests will be shown.
   "max_slots": 3,
 
+  // Each prestige tier inherits the last configured limit. Use {} for one limit at all levels.
+  "max_slots_by_prestige": { "1": 4, "2": 5, "3": 6, "4": 7, "5": 8, "6": 9 },
+
   // When true, modded quests are subject to the slot limit like vanilla quests.
   // When false, modded quests bypass the filter entirely (always visible).
   "filter_modded_quests": true,

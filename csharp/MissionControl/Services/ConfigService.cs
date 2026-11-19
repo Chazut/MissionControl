@@ -1,77 +1,71 @@
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using MissionControl.Models;
-using SPTarkov.DI.Annotations;
 using SPTarkov.Common.Models.Logging;
+using SPTarkov.DI.Annotations;
 
 namespace MissionControl.Services;
 
-/// <summary>
-/// Loads and holds the mod configuration from config/config.jsonc.
-/// </summary>
 [Injectable(InjectionType.Singleton)]
-public sealed partial class ConfigService
+public sealed class ConfigService(ISptLogger<ConfigService> logger)
 {
-    private readonly ISptLogger<ConfigService> _logger;
+    private readonly object _writeLock = new();
+    private static string ConfigPath => Path.Combine(Path.GetDirectoryName(typeof(ConfigService).Assembly.Location)!, "config", "config.jsonc");
 
-    public ModConfig Config { get; private set; } = new();
-
-    /// <summary>
-    /// Trader IDs resolved from the trader_whitelist names.
-    /// Populated by PostDb after the database is loaded.
-    /// </summary>
+    public ModConfig Config => Volatile.Read(ref _config);
+    private ModConfig _config = new();
     public HashSet<string> ResolvedTraderWhitelist { get; } = [];
-
-    public ConfigService(ISptLogger<ConfigService> logger)
-    {
-        _logger = logger;
-    }
 
     public void Load()
     {
-        var configDir = GetConfigDir();
-        var configPath = Path.Combine(configDir, "config.jsonc");
-
-        if (!File.Exists(configPath))
-        {
-            _logger.Warning($"[MissionControl] Config not found at {configPath}, using defaults (max_slots={Config.max_slots})");
-            return;
-        }
-
         try
         {
-            var raw = File.ReadAllText(configPath);
-            var json = StripJsoncComments(raw);
-            Config = JsonSerializer.Deserialize<ModConfig>(json) ?? new ModConfig();
-            _logger.Info($"[MissionControl] Config loaded: max_slots={Config.max_slots}");
+            if (!File.Exists(ConfigPath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath)!);
+                using var defaults = typeof(ConfigService).Assembly.GetManifestResourceStream("MissionControl.DefaultConfig.jsonc")!;
+                using var file = new FileStream(ConfigPath, FileMode.CreateNew, FileAccess.Write);
+                defaults.CopyTo(file);
+            }
+            _config = ReadDocument().Settings;
+            logger.Info($"[MissionControl] Config loaded: {_config.max_slots} base slots, {_config.max_slots_by_prestige.Count} prestige overrides.");
         }
         catch (Exception ex)
         {
-            _logger.Warning($"[MissionControl] Failed to load config: {ex.Message}, using defaults");
+            logger.Warning($"[MissionControl] Could not load config: {ex.Message}");
         }
     }
 
-    private static string GetConfigDir()
+    public ConfigDocument ReadDocument() => ConfigDocument.Open(ConfigPath);
+
+    public ConfigDocument Save(ConfigDocument original, ModConfig edited)
     {
-        var assemblyDir = Path.GetDirectoryName(typeof(ConfigService).Assembly.Location);
-        return Path.Combine(assemblyDir ?? ".", "config");
+        if (edited.max_slots < 0 || edited.reroll_cost < 0 ||
+            edited.max_slots_by_prestige.Any(p => p.Key <= 0 || p.Value < 0))
+            throw new ArgumentException("Slot limits and price must be zero or higher. Prestige levels start at one.");
+
+        lock (_writeLock)
+        {
+            var current = ReadDocument();
+            if (original.Source != current.Source)
+                throw new InvalidOperationException("Settings changed since you opened the editor. Reload the saved values before saving.");
+            var updated = current.Apply(edited);
+            if (updated == current.Source) return current;
+
+            var path = ConfigPath;
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temp, updated);
+                var saved = ConfigDocument.Open(temp);
+                File.Move(temp, path, overwrite: true);
+                // The trader catalogue and whitelist are initialized at startup. Slot limits are read per request.
+                Volatile.Write(ref _config, Config with {
+                    max_slots = saved.Settings.max_slots,
+                    max_slots_by_prestige = new(saved.Settings.max_slots_by_prestige)
+                });
+                return saved;
+            }
+            finally { if (File.Exists(temp)) File.Delete(temp); }
+        }
     }
-
-    /// <summary>
-    /// Strips single-line (//) and multi-line (/* */) comments from JSONC.
-    /// </summary>
-    private static string StripJsoncComments(string input)
-    {
-        // Remove multi-line comments
-        var result = MultiLineCommentRegex().Replace(input, string.Empty);
-        // Remove single-line comments (not inside strings)
-        result = SingleLineCommentRegex().Replace(result, string.Empty);
-        return result;
-    }
-
-    [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
-    private static partial Regex MultiLineCommentRegex();
-
-    [GeneratedRegex(@"//.*?$", RegexOptions.Multiline)]
-    private static partial Regex SingleLineCommentRegex();
 }

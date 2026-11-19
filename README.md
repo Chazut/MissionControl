@@ -16,6 +16,7 @@ With many mods installed, the quest list becomes unmanageable. You don't know wh
 - **Failed quests** stay in their slot — you can restart them from the UI
 - Selections are **persisted** per profile across server restarts
 - Story chapters and hidden progression steps bypass the slot limit, including VisitAPI's Tour and its trader unlocks. Their original prerequisites still apply.
+- Each profile uses its PMC's **prestige level** to determine its quest limit. Configure the base limit and prestige overrides in the SPT server web UI under **MissionControl** (`/missioncontrol`).
 - The **BTR Driver's quests** are never offered (his whole line hinges on the BTR taxi), nor is Keeper's Word, broken in SPT. Both are hardcoded, no option
 
 ### Example
@@ -32,7 +33,7 @@ If installed on an existing profile with many active quests, no new quests will 
 Buy the **"Mission Reroll"** item at **Prapor** or **Croupier** (if installed), both at LL1 and the same configured price. When purchased:
 
 1. All your currently in-progress quests become **exempt** — they stay visible but no longer consume slots
-2. **3 new random quests** are assigned to your slots
+2. New random missions fill the slots available at your prestige
 3. The new quests show up in the Tasks screen right away, no reload
 
 This lets you break out of difficult quests without losing progress. Your stuck quests remain active alongside the new ones until you complete them.
@@ -41,7 +42,7 @@ This lets you break out of difficult quests without losing progress. Your stuck 
 
 ### Server mod
 
-Copy `MissionControl.dll` and the `config/` folder to:
+Copy `MissionControl.dll` to `SPT_Runtime/user/mods/MissionControl/`. On first launch, MissionControl creates its config if needed. Your existing config takes precedence.
 ```
 SPT_Runtime/user/mods/MissionControl/
 ├── MissionControl.dll
@@ -57,12 +58,15 @@ Replace any older copy. The server still handles payment, consumes the item and 
 
 ## Configuration
 
-Edit `config/config.jsonc`:
+Open **MissionControl** in the SPT web UI or edit `config/config.jsonc` to set the limit for each prestige level. A blank tier inherits the previous limit.
 
 ```jsonc
 {
   // Maximum number of quests visible at once (in-progress + available combined).
   "max_slots": 3,
+
+  // A limit applies from this prestige onward, until the next override.
+  "max_slots_by_prestige": { "1": 4, "2": 5, "3": 6, "4": 7, "5": 8, "6": 9 },
 
   // When true, modded quests are subject to the slot limit like vanilla quests.
   // When false, modded quests bypass the filter entirely (always visible).
@@ -88,6 +92,7 @@ Edit `config/config.jsonc`:
 | Option | Default | Description |
 |---|---|---|
 | `max_slots` | `3` | Total quest slots (in-progress + available) |
+| `max_slots_by_prestige` | P1 4, P2 5, P3 6, P4 7, P5 8, P6 9 | Missing levels inherit the previous limit. An existing config without this entry keeps its base limit at every prestige. Additional levels are supported. |
 | `filter_modded_quests` | `true` | If `false`, modded quests are always visible and don't consume slots |
 | `trader_whitelist` | `["Quartermaster"]` | Trader names (case-insensitive) whose quests bypass the filter |
 | `reroll_cost` | `50000` | Rouble cost for the Mission Reroll item at Prapor and Croupier (if installed) |
@@ -105,7 +110,6 @@ dotnet build csharp/MissionControl/MissionControl.csproj -c Release
 # Client plugin
 dotnet build csharp/MissionControl.Client/MissionControl.Client.csproj -c Release
 
-
 ```
 
 ## Compatibility
@@ -113,6 +117,8 @@ dotnet build csharp/MissionControl.Client/MissionControl.Client.csproj -c Releas
 - SPT 4.1.x
 - Works with all quest mods (modded quests are detected automatically)
 - Works with custom traders
+
+Thanks to pngv for suggesting prestige-based quest limits.
 
 ## License
 
