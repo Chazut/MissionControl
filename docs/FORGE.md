@@ -2,59 +2,32 @@
 
 ### Overview
 
-Ever open the Tasks tab to pick your next raid and spend longer reading than playing? **MissionControl gives you three quest slots to start with.** It fills them with random picks from quests you've already unlocked. Finish one and another eligible quest takes its place.
+**MissionControl picks 3 quests at random from the ones you've unlocked**, giving you a shorter list to plan your next raid. With one quest accepted, you'll see up to two more on offer. Finish one and another quest takes its place. Your picks stay the same between raids and server restarts.
 
-With three slots and one quest already accepted, you'll see that quest plus up to two new offers. Your picks carry over between raids and server restarts. Story chapters, hidden steps that unlock traders, and the quests leading to Jaeger stay outside the limit and follow their usual requirements.
-
-On a fresh install, each prestige from P1 to P6 adds one slot. If you'd rather keep three slots throughout or choose your own progression, open **MissionControl** in the SPT server web UI.
+- **Prestige adds a slot per level**, from 4 at P1 to 9 at P6 by default.
+- **Vanilla and modded quests** share the same slots. Daily and weekly tasks are extra by default.
+- **Story chapters and trader unlocks** follow their usual progression, including the quests that unlock Jaeger.
 
 ### Rerolls
 
-Stuck on a quest you want to save for later? Buy the **Mission Reroll - Uplink** from **Prapor at LL1** for **50,000 ₽**. You can change the vendors and price in the settings.
+Buy the **Mission Reroll - Uplink** from **Prapor at loyalty level 1** for **50,000 ₽**. Your trader's Tasks tab refreshes as soon as you buy it.
 
-The purchase refreshes the trader's Tasks tab straight away. Your accepted quests stay active and stop counting toward the limit. For example, if you have three accepted quests and three slots, a reroll lets you keep all three and see up to three fresh offers. The uplink is used when you buy it.
+Say you've accepted three quests and want to run a different map tonight. A reroll keeps all three active, frees their slots and gives you up to three fresh offers from your unlocked quests.
 
-### Installation
+### Installation & settings
 
-1. Extract both folders from the ZIP into your SPT root, alongside `BepInEx` and `SPT_Runtime`. Allow the new files to replace older copies.
-2. Start the server and game. If you're upgrading from the server-only 1.1.0 release, include the new client plugin so rerolls refresh the open trader screen.
+**SPT 4.1.x · Works with existing profiles.** Extract both folders from the ZIP into your SPT game folder, next to `EscapeFromTarkov.exe`, then start the server and game.
 
-| Component | Installed file |
-|---|---|
-| Client | `BepInEx/plugins/MissionControl.Client.dll` |
-| Server | `SPT_Runtime/user/mods/MissionControl/MissionControl.dll` |
+Open **MissionControl** in the **SPT server web UI** to customize your quest list and rerolls.
 
-MissionControl creates its config on first launch. Upgrades keep your settings and saved selections. If your existing config has no prestige tiers, your base limit applies at every prestige until you add tiers in the editor.
+- Set your starting quest limit and the slots you get at each prestige.
+- Choose which quests count toward the limit and which traders always show their quests.
+- Pick who sells the uplink and how much it costs.
 
-### Settings
+Slot limits and daily/weekly counting apply on the next quest refresh. Other changes take effect after a server restart.
 
-Open **MissionControl** in the SPT server web UI (`/missioncontrol`). You can also edit `SPT_Runtime/user/mods/MissionControl/config/config.jsonc` directly. Slot limits and repeatable task counting saved in the web UI apply on the next quest refresh. Restart the server for other settings or direct file edits.
+### Issues & support
 
-| Setting | Fresh install | What it does |
-|---|---|---|
-| `max_slots` | `3` | Sets the base limit for accepted quests and new offers combined. |
-| `max_slots_by_prestige` | P1 **4**, P2 **5**, P3 **6**, P4 **7**, P5 **8**, P6 **9** | Sets the limit at each prestige. A blank tier uses the previous limit. |
-| `filter_modded_quests` | `true` | Includes modded quests in the selection. Turn it off to let unlocked modded quests bypass the limit. |
-| `trader_whitelist` | `["Quartermaster"]` | Lets a trader's quests bypass the limit. Enter vanilla or custom trader names in any letter case. |
-| `count_repeatable_tasks` | `false` | Turn on to let accepted daily and weekly tasks use a slot. New daily and weekly offers stay available. |
-| `reroll_traders` | `["Prapor"]` | Enter one shop name or trader ID per line in the editor. Leave empty to disable sales. Fence and in-raid services have no fixed storefront for the uplink. |
-| `reroll_cost` | `50000` | Sets the uplink price in roubles at the selected shops. |
-| `debug` | `false` | Writes detailed quest selection logs. |
-| `debug_refresh` | `false` | Clears saved selections on every server start. Intended for testing. |
-
-### Compatibility
-
-- **SPT 4.1.x**, built against 4.1.6.
-- **Existing profiles** keep their accepted quests. If those already fill your slots, completing one or buying a reroll makes room for fresh offers.
-- **Story and custom traders** follow their normal unlock conditions. VisitAPI's Tour and its hidden progression steps bypass the limit. The BTR Driver quest line and Keeper's Word are excluded from random picks.
-- To return to the usual quest list, remove the client plugin and the MissionControl server mod, then restart the server and game.
-
-### Issues
-
-If a quest seems to be missing, include its name, the trader and your PMC's prestige level when you [report the issue on GitHub](https://github.com/Chazut/MissionControl/issues).
-
-### Support
-
-All my mods are free and open source. If MissionControl helped you spend less time in menus and more time in raid, you can buy me a coffee.
+Missing a quest? Include its name, the trader and your prestige level in your [GitHub issue](https://github.com/Chazut/MissionControl/issues).
 
 [![Support Chazut on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/chazut)

@@ -1,133 +1,42 @@
-<img src="branding/mission-control.svg" width="88" alt="Mission Control uplink" />
+<img src="branding/mission-control.svg" width="88" alt="MissionControl uplink" />
 
 # MissionControl
 
-An SPT 4.1 mod that limits the number of quests visible at any time. Instead of being overwhelmed by dozens of available quests, you only see a handful — picked randomly from your unlocked quests.
+Plan your next SPT raid around a handful of quests. MissionControl starts you with **3 quest slots** and randomly fills them from the quests you've unlocked. Your selection carries over between raids and server restarts.
 
-## The Problem
+## Quick start
 
-With many mods installed, the quest list becomes unmanageable. You don't know what to prioritize, which weapon to bring, or which map to play. MissionControl fixes this by capping the number of visible quests, forcing you to focus.
+1. Extract both folders from the release ZIP into your **SPT 4.1.x** game folder, next to `EscapeFromTarkov.exe`. For a shared server, install the server mod on the host and the client plugin on each playing client.
+2. Start the server and game. Open a trader's **Tasks** tab to see your quests.
+3. To change the defaults, open **MissionControl** in the SPT server web UI (`/missioncontrol`).
 
-## How It Works
+## How quest slots work
 
-- Only **N quests** are visible at once (default: 3), including quests already in progress
-- Available quests are **randomly selected** from all your unlocked quests
-- When you **complete** a quest, a new random one takes its slot immediately
-- **Failed quests** stay in their slot — you can restart them from the UI
-- Selections are **persisted** per profile across server restarts
-- Story chapters and hidden progression steps bypass the slot limit, including VisitAPI's Tour and its trader unlocks. Their original prerequisites still apply.
-- Each profile uses its PMC's **prestige level** to determine its quest limit. Configure the base limit and prestige overrides in the SPT server web UI under **MissionControl** (`/missioncontrol`).
-- The **BTR Driver's quests** are never offered (his whole line hinges on the BTR taxi), nor is Keeper's Word, broken in SPT. Both are hardcoded, no option
+With 3 slots and 1 quest in progress, you can see up to 2 new offers. Finish a quest and another unlocked one fills its slot. Existing profiles keep every accepted quest, even if the list is already over the limit. A failed quest that you can restart keeps its slot.
 
-### Example
+- **Prestige** adds one slot per level by default, from 4 at P1 to 9 at P6.
+- **Vanilla and modded quests** share the limit. Daily and weekly tasks are extra by default.
+- **Story chapters and trader unlocks** follow their usual requirements. This includes the quests that unlock Jaeger and VisitAPI's Tour. BTR Driver quests and Keeper's Word are excluded from random picks.
 
-With `max_slots: 3`:
-- 0 quests in progress → 3 random available quests shown
-- 1 quest in progress → 2 random available quests shown
-- 3+ quests in progress → no new quests shown until you complete some
+## Reroll your offers
 
-If installed on an existing profile with many active quests, no new quests will be proposed until you drop below the limit.
+Buy the **Mission Reroll - Uplink** from **Prapor at loyalty level 1** for **50,000 ₽**. The purchase refreshes the open Tasks tab immediately. If all 3 slots are tied up in quests you'd like to save for later, you keep all 3 and can get up to 3 fresh offers.
 
-## Reroll
+## Web settings
 
-By default, **Prapor** sells the **Mission Reroll** at LL1. Choose different vendors with `reroll_traders`. When purchased:
+In the web UI you can set the number of slots at each prestige, choose whether modded quests or accepted daily and weekly tasks use a slot, and pick traders whose quests always stay visible. You can also change who sells the uplink and its price.
 
-1. All your currently in-progress quests become **exempt** — they stay visible but no longer consume slots
-2. New random missions fill the slots available at your prestige
-3. The new quests show up in the Tasks screen right away, no reload
+Slot limits and repeatable task counting apply on the next quest refresh. Restart the server for other settings to take effect.
 
-This lets you break out of difficult quests without losing progress. Your stuck quests remain active alongside the new ones until you complete them.
+## Build from source
 
-## Installation
+Use the .NET 10 SDK and an SPT 4.1.x installation. From the repository root, point the server build at the `SPT_Runtime` folder and the client build at the game folder. Adjust the paths for your installation.
 
-### Server mod
-
-Copy `MissionControl.dll` to `SPT_Runtime/user/mods/MissionControl/`. On first launch, MissionControl creates its config if needed. Your existing config takes precedence.
+```powershell
+dotnet build csharp/MissionControl/MissionControl.csproj -c Release -p:SPT_DIR="C:\Games\SPT-4.1\SPT_Runtime"
+dotnet build csharp/MissionControl.Client/MissionControl.Client.csproj -c Release -p:GameRoot="C:\Games\SPT-4.1"
 ```
-SPT_Runtime/user/mods/MissionControl/
-├── MissionControl.dll
-└── config/
-    └── config.jsonc
-```
-
-### Client plugin
-
-Copy the current `MissionControl.Client.dll` into `BepInEx/plugins/` on each playing client.
-It refreshes trader quest icons and the Tasks tab after a successful Mission Reroll purchase.
-Replace any older copy. The server still handles payment, consumes the item and chooses the quests.
-
-## Configuration
-
-Open **MissionControl** in the SPT web UI or edit `config/config.jsonc` to set the limit for each prestige level. A blank tier inherits the previous limit.
-
-```jsonc
-{
-  // Maximum number of quests visible at once (in-progress + available combined).
-  "max_slots": 3,
-
-  // A limit applies from this prestige onward, until the next override.
-  "max_slots_by_prestige": { "1": 4, "2": 5, "3": 6, "4": 7, "5": 8, "6": 9 },
-
-  // When true, modded quests are subject to the slot limit like vanilla quests.
-  // When false, modded quests bypass the filter entirely (always visible).
-  "filter_modded_quests": true,
-
-  // Trader names whose quests bypass the slot filter entirely (always visible).
-  // Case-insensitive. Works with both vanilla and modded traders.
-  "trader_whitelist": ["Quartermaster"],
-
-  // Keep daily and weekly tasks outside the regular slot limit.
-  "count_repeatable_tasks": false,
-
-  // Shops that sell the uplink. Enter names or trader IDs.
-  "reroll_traders": ["Prapor"],
-
-  // Cost in roubles at the selected shops.
-  "reroll_cost": 50000,
-
-  // Enable verbose logging for debugging.
-  "debug": false,
-
-  // Clears all saved slot selections on server start. Development only.
-  "debug_refresh": false
-}
-```
-
-### Options
-
-| Option | Default | Description |
-|---|---|---|
-| `max_slots` | `3` | Total quest slots (in-progress + available) |
-| `max_slots_by_prestige` | P1 4, P2 5, P3 6, P4 7, P5 8, P6 9 | Missing levels inherit the previous limit. An existing config without this entry keeps its base limit at every prestige. Additional levels are supported. |
-| `filter_modded_quests` | `true` | If `false`, modded quests are always visible and don't consume slots |
-| `trader_whitelist` | `["Quartermaster"]` | Trader names (case-insensitive) whose quests bypass the filter |
-| `count_repeatable_tasks` | `false` | Turn on to count accepted daily and weekly tasks until hand-in. Their offers remain available on SPT's usual schedule. |
-| `reroll_traders` | `["Prapor"]` | Shop names or trader IDs. For Mechanic only, use `["Mechanic"]`. An empty list disables sales. Fence and in-raid services have no fixed storefront for this item. Restart the server after changing vendors. |
-| `reroll_cost` | `50000` | Rouble price at all selected shops. |
-| `debug` | `false` | Verbose server logging |
-| `debug_refresh` | `false` | Clear saved selections on server start |
-
-## Building from Source
-
-Requires the `SPT_DIR` MSBuild property pointing to your SPT 4.1 runtime folder (`SPT_Runtime`), set in the csproj.
-
-```bash
-# Server mod
-dotnet build csharp/MissionControl/MissionControl.csproj -c Release
-
-# Client plugin
-dotnet build csharp/MissionControl.Client/MissionControl.Client.csproj -c Release
-
-```
-
-## Compatibility
-
-- SPT 4.1.x
-- Works with all quest mods (modded quests are detected automatically)
-- Works with custom traders
 
 Thanks to pngv for suggesting prestige-based quest limits.
 
-## License
-
-MIT
+[Release notes for 1.2.0](RELEASE_NOTES_v1.2.0.md) · [Report an issue](https://github.com/Chazut/MissionControl/issues) · [MIT license](LICENSE)
