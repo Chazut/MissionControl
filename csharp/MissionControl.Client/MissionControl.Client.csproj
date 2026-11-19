@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>MissionControl.Client</AssemblyName>
-    <Version>1.1.1</Version>
+    <Version>1.2.0</Version>
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GameRoot>C:\Games\SPT-4.1</GameRoot>

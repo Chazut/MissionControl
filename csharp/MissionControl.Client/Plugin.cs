@@ -12,7 +12,7 @@ using HarmonyLib;
 
 namespace MissionControl.Client;
 
-[BepInPlugin("com.chazut.missioncontrol.client", "MissionControl Client", "1.1.1")]
+[BepInPlugin("com.chazut.missioncontrol.client", "MissionControl Client", "1.2.0")]
 public sealed class Plugin : BaseUnityPlugin
 {
     internal static ManualLogSource Log;
