@@ -1,8 +1,18 @@
 # MissionControl 1.2.0
 
-- **Your quest board grows with your prestige.** Start with three slots, then gain one at each prestige from P1 through P6, up to nine. Set your own limit for each tier on the new MissionControl page in the SPT web UI.
-- **Stuck on three quests? Keep all three and roll for fresh offers.** Buy the **Mission Reroll - Uplink** at Prapor LL1 for 50,000 roubles. The open Tasks tab refreshes immediately, and your accepted quests free up their slots. Both the seller and the price are configurable.
-- **Choose what takes up a slot.** Modded quests count by default. Dailies and weeklies leave your slots free unless you turn on counting for accepted repeatables.
-- **Fresh profiles can reach their traders again.** Hidden trader unlock steps and VisitAPI's Tour bypass the random selection, so new profiles can progress normally. BTR Driver quests are excluded from random picks.
+## Features
 
-**Updating from 1.1.0?** Extract both folders from the ZIP. The client plugin refreshes the open trader screen, and your existing settings carry over.
+- **Prestige slots** start at 3 and grow by one per prestige, up to 9 at P6. Adjust each tier in the web UI.
+- **Reroll vendors** are configurable. Prapor sells the uplink at LL1 for 50,000 roubles by default.
+
+## Changes
+
+- Modded quests count toward the limit by default. Counting accepted dailies and weeklies is optional and off by default.
+- BTR Driver quests are excluded from random picks.
+
+## Fixes
+
+- Buying a reroll refreshes the open Tasks tab immediately and keeps accepted quests active.
+- Hidden trader unlocks and VisitAPI's Tour can progress normally on fresh profiles.
+
+**Updating from 1.1.0?** Install both folders from the ZIP.
