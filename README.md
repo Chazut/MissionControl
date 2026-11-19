@@ -30,7 +30,7 @@ If installed on an existing profile with many active quests, no new quests will 
 
 ## Reroll
 
-Buy the **"Mission Reroll"** item at **Prapor** or **Croupier** (if installed), both at LL1 and the same configured price. When purchased:
+By default, **Prapor** sells the **Mission Reroll** at LL1. Choose different vendors with `reroll_traders`. When purchased:
 
 1. All your currently in-progress quests become **exempt** — they stay visible but no longer consume slots
 2. New random missions fill the slots available at your prestige
@@ -76,7 +76,13 @@ Open **MissionControl** in the SPT web UI or edit `config/config.jsonc` to set t
   // Case-insensitive. Works with both vanilla and modded traders.
   "trader_whitelist": ["Quartermaster"],
 
-  // Cost in roubles for the reroll item at Prapor and Croupier (if installed).
+  // Keep daily and weekly tasks outside the regular slot limit.
+  "count_repeatable_tasks": false,
+
+  // Shops that sell the uplink. Enter names or trader IDs.
+  "reroll_traders": ["Prapor"],
+
+  // Cost in roubles at the selected shops.
   "reroll_cost": 50000,
 
   // Enable verbose logging for debugging.
@@ -95,7 +101,9 @@ Open **MissionControl** in the SPT web UI or edit `config/config.jsonc` to set t
 | `max_slots_by_prestige` | P1 4, P2 5, P3 6, P4 7, P5 8, P6 9 | Missing levels inherit the previous limit. An existing config without this entry keeps its base limit at every prestige. Additional levels are supported. |
 | `filter_modded_quests` | `true` | If `false`, modded quests are always visible and don't consume slots |
 | `trader_whitelist` | `["Quartermaster"]` | Trader names (case-insensitive) whose quests bypass the filter |
-| `reroll_cost` | `50000` | Rouble cost for the Mission Reroll item at Prapor and Croupier (if installed) |
+| `count_repeatable_tasks` | `false` | Turn on to count accepted daily and weekly tasks until hand-in. Their offers remain available on SPT's usual schedule. |
+| `reroll_traders` | `["Prapor"]` | Shop names or trader IDs. For Mechanic only, use `["Mechanic"]`. An empty list disables sales. Fence and in-raid services have no fixed storefront for this item. Restart the server after changing vendors. |
+| `reroll_cost` | `50000` | Rouble price at all selected shops. |
 | `debug` | `false` | Verbose server logging |
 | `debug_refresh` | `false` | Clear saved selections on server start |
 

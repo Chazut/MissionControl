@@ -33,8 +33,7 @@ public sealed class PostDb : IOnLoad
         _logger.Info($"[MissionControl] Loaded {VanillaQuestSnapshot.Ids.Count} vanilla quest IDs");
 
         // Resolve trader whitelist names → IDs
-        if (_configService.Config.filter_modded_quests)
-            ResolveTraderWhitelist();
+        ResolveTraderWhitelist();
 
         if (_configService.Config.debug_refresh)
         {
@@ -45,7 +44,7 @@ public sealed class PostDb : IOnLoad
 
         var cfg = _configService.Config;
         var status = $"[MissionControl] Active — max_slots={cfg.max_slots}, filter_modded={cfg.filter_modded_quests}";
-        if (cfg.filter_modded_quests && _configService.ResolvedTraderWhitelist.Count > 0)
+        if (_configService.ResolvedTraderWhitelist.Count > 0)
             status += $", whitelisted_traders={_configService.ResolvedTraderWhitelist.Count}";
         _logger.Info(status);
         return Task.CompletedTask;

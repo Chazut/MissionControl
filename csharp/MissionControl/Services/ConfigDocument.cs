@@ -16,6 +16,7 @@ public sealed record ConfigDocument(string Source, ModConfig Settings)
         var config = JsonSerializer.Deserialize<ModConfig>(source, Options) ?? throw new JsonException("Expected a settings object.");
         config.max_slots_by_prestige ??= [];
         config.trader_whitelist ??= [];
+        config.reroll_traders ??= new ModConfig().reroll_traders;
         return new(source, config);
     }
 

@@ -3,6 +3,8 @@ using System.Text.Json.Nodes;
 using MissionControl.Models;
 using SPTarkov.Server.Core.Helpers.Profile;
 using SPTarkov.Server.Core.Models.Common;
+using SPTarkov.Server.Core.Models.Eft.Common;
+using SPTarkov.Server.Core.Models.Enums;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 
 namespace MissionControl.Services;
@@ -93,6 +95,30 @@ public static class QuestFilterRules
             return true;
 
         return false;
+    }
+
+    // SPT sends operational tasks in a separate activityPeriods response. The period owns the
+    // templates; the PMC's quest log is authoritative for acceptance and completion.
+    public static HashSet<string> GetRepeatableIds(PmcData? pmc, HashSet<string> exemptTraders, out HashSet<string> accepted)
+    {
+        var all = new HashSet<string>();
+        accepted = [];
+        foreach (var period in pmc?.RepeatableQuests ?? [])
+        {
+            foreach (var quest in period.ActiveQuests ?? [])
+            {
+                var id = quest.Id.ToString();
+                var trader = quest.TraderId.ToString();
+                all.Add(id);
+                if (!exemptTraders.Contains(trader) && !IsBlacklisted(id, trader))
+                    accepted.Add(id);
+            }
+        }
+        if (accepted.Count > 0)
+            accepted.IntersectWith((pmc!.Quests ?? [])
+                .Where(q => q.Status is QuestStatusEnum.Started or QuestStatusEnum.AvailableForFinish or QuestStatusEnum.FailRestartable)
+                .Select(q => q.QId.ToString()));
+        return all;
     }
 
     public static HashSet<string> GetUnlockedTraderIds(ProfileHelper profileHelper, MongoId sessionId, out int prestige)

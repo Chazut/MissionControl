@@ -45,6 +45,9 @@ public sealed class QuestSelectionService(
         var clientQuests = questHelper.GetClientQuests(sessionId);
         var unlockedTraders = QuestFilterRules.GetUnlockedTraderIds(profileHelper, sessionId, out var prestige);
 
+        var repeatables = QuestFilterRules.GetRepeatableIds(profileHelper.GetPmcProfile(sessionId),
+            configService.ResolvedTraderWhitelist, out var acceptedRepeatables);
+        selection.ExemptIds.UnionWith(repeatables);
         var eligibleQuests = new List<(string id, int status)>();
         foreach (var quest in clientQuests)
         {
@@ -58,7 +61,7 @@ public sealed class QuestSelectionService(
                 continue;
             }
 
-            if (QuestFilterRules.IsBlacklisted(id, traderId)) continue;
+            if (repeatables.Contains(id) || QuestFilterRules.IsBlacklisted(id, traderId)) continue;
 
             if (status == AvailableForStart)
                 selection.AvailableById[id] = quest;
@@ -80,7 +83,7 @@ public sealed class QuestSelectionService(
             }
         }
 
-        selection.VisibleIds = slotManager.GetVisibleQuestIds(eligibleQuests, state, config.SlotsFor(prestige));
+        selection.VisibleIds = slotManager.GetVisibleQuestIds(eligibleQuests, state, config.SlotsFor(prestige), acceptedRepeatables, config.count_repeatable_tasks);
         return selection;
     }
 

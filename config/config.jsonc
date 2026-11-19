@@ -12,13 +12,20 @@
   // When false, modded quests bypass the filter entirely (always visible).
   "filter_modded_quests": true,
 
+  // Accepted daily and weekly tasks use a slot when true. Unaccepted offers stay available.
+  "count_repeatable_tasks": false,
+
+  // Trader names or IDs selling the uplink at LL1.
+  // Use [] to disable sales. Fence's rotating stock and in-raid services have no fixed shop.
+  "reroll_traders": ["Prapor"],
+
   // Trader names whose quests bypass the slot filter entirely (always visible).
   // Case-insensitive. Works with both vanilla and modded traders.
   // Example: ["Therapist", "Kolya", "Guiding Light"]
   // If a name is not found, available traders will be listed in the server log.
   "trader_whitelist": ["Quartermaster"],
 
-  // Cost in roubles for the reroll item at Prapor and Croupier (if installed).
+  // Cost in roubles for the reroll item at the configured traders.
   "reroll_cost": 50000,
 
   // Enable verbose logging for debugging.

@@ -27,6 +27,10 @@ public sealed record ModConfig
     /// </summary>
     public bool filter_modded_quests { get; set; } = true;
 
+    public bool count_repeatable_tasks { get; set; } = false;
+
+    public List<string> reroll_traders { get; set; } = ["Prapor"];
+
     /// <summary>
     /// Trader IDs whose quests bypass the slot filter entirely (always visible).
     /// Accepts both vanilla and modded trader IDs.
@@ -35,7 +39,7 @@ public sealed record ModConfig
     public List<string> trader_whitelist { get; set; } = [];
 
     /// <summary>
-    /// Cost in roubles to reroll quest slots (buy at Prapor or Croupier, if installed).
+    /// Cost in roubles to reroll quest slots at the configured traders.
     /// </summary>
     public int reroll_cost { get; set; } = 50000;
 

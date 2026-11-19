@@ -26,7 +26,9 @@ public sealed class SlotManager
     public HashSet<string> GetVisibleQuestIds(
         List<(string id, int status)> quests,
         ProfileState state,
-        int maxSlots)
+        int maxSlots,
+        IReadOnlySet<string>? acceptedRepeatables = null,
+        bool countRepeatables = false)
     {
         var visible = new HashSet<string>();
 
@@ -37,7 +39,8 @@ public sealed class SlotManager
             if (status is QuestStatus.Started or QuestStatus.AvailableForFinish or QuestStatus.FailRestartable)
                 inProgressSet.Add(id);
         }
-        state.ExemptQuestIds.RemoveAll(id => !inProgressSet.Contains(id));
+        // A rerolled daily stays exempt if the player later turns counting back on.
+        state.ExemptQuestIds.RemoveAll(id => !inProgressSet.Contains(id) && acceptedRepeatables?.Contains(id) != true);
 
         // 2. Always show all in-progress quests (exempt or not)
         foreach (var (id, status) in quests)
@@ -47,6 +50,9 @@ public sealed class SlotManager
         }
 
         // 3. Count in-progress quests that are NOT exempt — only these consume slots
+        if (countRepeatables && acceptedRepeatables != null)
+            inProgressSet.UnionWith(acceptedRepeatables);
+
         int nonExemptInProgress = 0;
         foreach (var id in inProgressSet)
         {

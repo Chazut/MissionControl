@@ -80,6 +80,8 @@ public sealed class QuestListRouter(
 
             var unlockedTraders = QuestFilterRules.GetUnlockedTraderIds(profileHelper, sessionId, out var prestige);
             var slots = config.SlotsFor(prestige);
+            var repeatables = QuestFilterRules.GetRepeatableIds(profileHelper.GetPmcProfile(sessionId),
+                configService.ResolvedTraderWhitelist, out var acceptedRepeatables);
 
             // Parse all quests from the response
             var allQuests = new List<(string id, int status, string? traderId, bool exempt)>();
@@ -107,7 +109,7 @@ public sealed class QuestListRouter(
                     continue;
                 }
 
-                var exempt = QuestFilterRules.IsExemptFromFilter(id, traderId, config, configService.ResolvedTraderWhitelist);
+                var exempt = repeatables.Contains(id) || QuestFilterRules.IsExemptFromFilter(id, traderId, config, configService.ResolvedTraderWhitelist);
                 allQuests.Add((id, status, traderId, exempt));
             }
 
@@ -132,7 +134,7 @@ public sealed class QuestListRouter(
             // Compute visible set from slot manager
             var sessionIdStr = sessionId.ToString();
             var state = storage.Load(sessionIdStr);
-            var visibleIds = slotManager.GetVisibleQuestIds(eligibleQuests, state, slots);
+            var visibleIds = slotManager.GetVisibleQuestIds(eligibleQuests, state, slots, acceptedRepeatables, config.count_repeatable_tasks);
             storage.Save(sessionIdStr, state);
 
             // Add all exempt quest IDs to visible set

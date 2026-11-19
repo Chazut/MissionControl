@@ -2,6 +2,8 @@ using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Spt.Mod;
+using SPTarkov.Server.Core.Models.Enums;
+using SPTarkov.Server.Core.Services.Locales;
 using SPTarkov.Common.Models.Logging;
 using SPTarkov.Server.Core.Models.Spt.Tables;
 using SPTarkov.Server.Core.Services.Modding.Custom;
@@ -17,17 +19,17 @@ public sealed class RerollService
     private const string ParentClass = "5447e0e74bdc2d3c308b4567";
     private const string ElectronicsCategory = "5b47574386f77428ca22b2ef";
 
-    private const string PraporId = "54cb50c76803fa8b248b4571";
-    private const string CroupierId = "1337bb0dd843363fcd1be869";
     private const string RoublesTpl = "5449016a4bdc2d6f028b456f";
 
     private readonly TradersTable _traders;
+    private readonly LocaleService _locales;
     private readonly CustomItemService _customItemService;
     private readonly ISptLogger<RerollService> _logger;
 
-    public RerollService(TradersTable traders, CustomItemService customItemService, ISptLogger<RerollService> logger)
+    public RerollService(TradersTable traders, LocaleService locales, CustomItemService customItemService, ISptLogger<RerollService> logger)
     {
         _traders = traders;
+        _locales = locales;
         _customItemService = customItemService;
         _logger = logger;
     }
@@ -90,25 +92,50 @@ public sealed class RerollService
         return true;
     }
 
-    public bool AddToPrapor(int price) => AddToTrader(PraporId, price);
-
-    public bool AddToCroupier(int price) => AddToTrader(CroupierId, price);
-
-    private bool AddToTrader(string traderId, int price)
+    public void StockVendors(IReadOnlyList<string> vendors, int price)
     {
-        if (!_traders.TryGetValue(traderId, out var trader) || trader?.Assort == null)
-            return false;
+        if (vendors.Count == 0) return;
+        var english = _locales.GetLocaleDb("en");
+        var shops = _traders.Where(t => t.Key != Traders.FENCE && t.Value.Base?.AvailableInRaid != true
+                                        && t.Value.Assort != null)
+            .Select(t => (Id: t.Key.ToString(), Trader: t.Value,
+                          Name: english.GetValueOrDefault($"{t.Key} Nickname") ?? t.Value.Base?.Nickname))
+            .ToList();
+        var stocked = new HashSet<string>();
+        foreach (var vendor in vendors)
+        {
+            var name = vendor?.Trim();
+            if (string.IsNullOrEmpty(name)) continue;
+            var matches = shops.Where(shop => string.Equals(shop.Id, name, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(shop.Trader.Base?.Nickname, name, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(shop.Name, name, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (matches.Count != 1)
+            {
+                _logger.Warning($"[MissionControl] Cannot resolve reroll vendor '{name}' to one shop. Available: "
+                    + string.Join(", ", shops.Select(s => $"{s.Name} ({s.Id})")));
+                continue;
+            }
 
-        var assort = trader.Assort;
+            var shop = matches[0];
+            if (!stocked.Add(shop.Id)) continue;
+            if (AddOffer(shop.Trader.Assort, price))
+                _logger.Info($"[MissionControl] Reroll sold by {shop.Name} at LL1 for {price} RUB.");
+            else
+                _logger.Warning($"[MissionControl] Could not add the reroll to {shop.Name}'s shop.");
+        }
+    }
+
+    private static bool AddOffer(TraderAssort assort, int price)
+    {
         if (assort.Items is not List<Item> items ||
             assort.BarterScheme is not Dictionary<MongoId, List<List<BarterScheme>>> bs ||
             assort.LoyalLevelItems is not Dictionary<MongoId, int> lli)
             return false;
 
-        var assortId = new MongoId(Guid.NewGuid().ToString("N")[..24]);
-        items.Add(new Item
+        var existing = items.FirstOrDefault(item => item.Template == RerollItemId && item.ParentId == "hideout");
+        var offer = existing ?? new Item
         {
-            Id = assortId,
+            Id = new MongoId(Guid.NewGuid().ToString("N")[..24]),
             Template = new MongoId(RerollItemId),
             ParentId = "hideout",
             SlotId = "hideout",
@@ -117,12 +144,13 @@ public sealed class RerollService
                 UnlimitedCount = true,
                 StackObjectsCount = int.MaxValue
             }
-        });
+        };
+        if (existing == null) items.Add(offer);
 
-        bs[assortId] = [
+        bs[offer.Id] = [
             [new BarterScheme { Template = new MongoId(RoublesTpl), Count = price }]
         ];
-        lli[assortId] = 1;
+        lli[offer.Id] = 1;
 
         return true;
     }

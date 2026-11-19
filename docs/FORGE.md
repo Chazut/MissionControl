@@ -10,7 +10,7 @@ On a fresh install, each prestige from P1 to P6 adds one slot. If you'd rather k
 
 ### Rerolls
 
-Stuck on a quest you want to save for later? Buy the **Mission Reroll - Uplink** from **Prapor at LL1** for **50,000 ₽**. Croupier sells it at the same price if you have him installed.
+Stuck on a quest you want to save for later? Buy the **Mission Reroll - Uplink** from **Prapor at LL1** for **50,000 ₽**. You can change the vendors and price in the settings.
 
 The purchase refreshes the trader's Tasks tab straight away. Your accepted quests stay active and stop counting toward the limit. For example, if you have three accepted quests and three slots, a reroll lets you keep all three and see up to three fresh offers. The uplink is used when you buy it.
 
@@ -28,7 +28,7 @@ MissionControl creates its config on first launch. Upgrades keep your settings a
 
 ### Settings
 
-Open **MissionControl** in the SPT server web UI (`/missioncontrol`). You can also edit `SPT_Runtime/user/mods/MissionControl/config/config.jsonc` directly. Slot limits saved in the web UI apply on the next quest refresh. Restart the server for other settings or direct file edits.
+Open **MissionControl** in the SPT server web UI (`/missioncontrol`). You can also edit `SPT_Runtime/user/mods/MissionControl/config/config.jsonc` directly. Slot limits and repeatable task counting saved in the web UI apply on the next quest refresh. Restart the server for other settings or direct file edits.
 
 | Setting | Fresh install | What it does |
 |---|---|---|
@@ -36,7 +36,9 @@ Open **MissionControl** in the SPT server web UI (`/missioncontrol`). You can al
 | `max_slots_by_prestige` | P1 **4**, P2 **5**, P3 **6**, P4 **7**, P5 **8**, P6 **9** | Sets the limit at each prestige. A blank tier uses the previous limit. |
 | `filter_modded_quests` | `true` | Includes modded quests in the selection. Turn it off to let unlocked modded quests bypass the limit. |
 | `trader_whitelist` | `["Quartermaster"]` | Lets a trader's quests bypass the limit. Enter vanilla or custom trader names in any letter case. |
-| `reroll_cost` | `50000` | Sets the uplink price in roubles at both traders. |
+| `count_repeatable_tasks` | `false` | Turn on to let accepted daily and weekly tasks use a slot. New daily and weekly offers stay available. |
+| `reroll_traders` | `["Prapor"]` | Enter one shop name or trader ID per line in the editor. Leave empty to disable sales. Fence and in-raid services have no fixed storefront for the uplink. |
+| `reroll_cost` | `50000` | Sets the uplink price in roubles at the selected shops. |
 | `debug` | `false` | Writes detailed quest selection logs. |
 | `debug_refresh` | `false` | Clears saved selections on every server start. Intended for testing. |
 

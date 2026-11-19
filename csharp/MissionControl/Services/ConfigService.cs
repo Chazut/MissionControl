@@ -60,6 +60,7 @@ public sealed class ConfigService(ISptLogger<ConfigService> logger)
                 File.Move(temp, path, overwrite: true);
                 // The trader catalogue and whitelist are initialized at startup. Slot limits are read per request.
                 Volatile.Write(ref _config, Config with {
+                    count_repeatable_tasks = saved.Settings.count_repeatable_tasks,
                     max_slots = saved.Settings.max_slots,
                     max_slots_by_prestige = new(saved.Settings.max_slots_by_prestige)
                 });

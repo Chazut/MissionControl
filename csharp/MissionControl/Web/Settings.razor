@@ -22,6 +22,7 @@
                     <label class="mc-base"><span>Base limit <small>Before the first prestige override</small></span>
                         <input type="number" min="0" required step="1" @bind="baseLimit" @bind:event="oninput" />
                     </label>
+                    <label class="mc-check"><input type="checkbox" @bind="countRepeatables" /> Count accepted daily and weekly tasks toward the limit</label>
                     <h3>Prestige progression</h3>
                     <p class="mc-help">Leave a limit blank to inherit the previous tier.</p>
                     <table>
@@ -44,6 +45,9 @@
                 <div class="mc-stack">
                     <section class="mc-card">
                         <h2>Trader settings</h2>
+                        <label class="mc-field">Reroll vendors
+                            <textarea rows="2" @bind="vendors"></textarea><small>One shop trader name or ID per line. Leave empty to disable sales.</small>
+                        </label>
                         <label class="mc-field">Reroll price (₽)
                             <input type="number" min="0" step="1" required @bind="price" />
                         </label>
@@ -60,7 +64,7 @@
                 </div>
             </div>
             <footer class="mc-save">
-                <div><span role="status" class="mc-status">@message</span><small>Slot limits apply on the next quest refresh. Other settings apply after a server restart.</small></div>
+                <div><span role="status" class="mc-status">@message</span><small>Slot limits and repeatable task counting apply on the next quest refresh. Other settings apply after a server restart.</small></div>
                 <div class="mc-actions"><button type="button" @onclick="Reload">Reload saved</button><button type="submit" class="mc-primary">Save settings</button></div>
             </footer>
         </form>
@@ -76,8 +80,8 @@
     private ConfigDocument? document;
     private List<Tier> tiers = [];
     private int? baseLimit, price;
-    private bool filterModded, debug, resetOnStart;
-    private string traders = "", message = "";
+    private bool filterModded, countRepeatables, debug, resetOnStart;
+    private string traders = "", vendors = "", message = "";
     private int Scale => Math.Max(1, Math.Max(baseLimit ?? 0, tiers.Max(t => t.Limit ?? 0)));
 
     private static string Resource(string name)
@@ -99,6 +103,8 @@
             var cfg = document.Settings;
             baseLimit = cfg.max_slots;
             price = cfg.reroll_cost;
+            countRepeatables = cfg.count_repeatable_tasks;
+            vendors = string.Join("\n", cfg.reroll_traders);
             filterModded = cfg.filter_modded_quests;
             debug = cfg.debug;
             resetOnStart = cfg.debug_refresh;
@@ -127,6 +133,8 @@
             var edited = document.Settings with {
                 max_slots = baseLimit.Value, reroll_cost = price.Value,
                 max_slots_by_prestige = new(tiers.Where(t => t.Limit.HasValue).ToDictionary(t => t.Level, t => t.Limit!.Value)),
+                count_repeatable_tasks = countRepeatables,
+                reroll_traders = vendors.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList(),
                 filter_modded_quests = filterModded, debug = debug, debug_refresh = resetOnStart,
                 trader_whitelist = traders.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList()
             };
