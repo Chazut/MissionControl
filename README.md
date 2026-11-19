@@ -46,10 +46,11 @@ SPT_Runtime/user/mods/MissionControl/
     └── config.jsonc
 ```
 
-### Client plugin: not needed anymore
+### Client plugin
 
-Since 1.1.0 the server does the quest refresh itself. If you still have
-`BepInEx/plugins/MissionControl.Client.dll` from 1.0.x, delete it.
+Copy the current `MissionControl.Client.dll` into `BepInEx/plugins/` on each playing client.
+It refreshes trader quest icons and the Tasks tab after a successful Mission Reroll purchase.
+Replace any older copy. The server still handles payment, consumes the item and chooses the quests.
 
 ## Configuration
 
@@ -97,6 +98,10 @@ Requires the `SPT_DIR` MSBuild property pointing to your SPT 4.1 runtime folder 
 ```bash
 # Server mod
 dotnet build csharp/MissionControl/MissionControl.csproj -c Release
+
+# Client plugin
+dotnet build csharp/MissionControl.Client/MissionControl.Client.csproj -c Release
+
 
 ```
 

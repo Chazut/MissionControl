@@ -3,11 +3,10 @@
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>MissionControl.Client</AssemblyName>
-    <AssemblyVersion>1.0.1</AssemblyVersion>
+    <Version>1.1.1</Version>
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GameRoot>C:\Games\SPT-4.1</GameRoot>
-    <OutputPath>$(GameRoot)\BepInEx\plugins\</OutputPath>
   </PropertyGroup>
 
   <!-- Keep the stale 4.0 DLLs vendored in dependencies\ out of the default item
@@ -32,6 +31,7 @@
       <HintPath>$(GameRoot)\EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Sirenix.Serialization" HintPath="$(GameRoot)\EscapeFromTarkov_Data\Managed\Sirenix.Serialization.dll" Private="false" />
     <Reference Include="UnityEngine">
       <HintPath>$(GameRoot)\EscapeFromTarkov_Data\Managed\UnityEngine.dll</HintPath>
       <Private>false</Private>
